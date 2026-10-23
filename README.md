@@ -31,7 +31,7 @@ requires a separately evidenced native acceptance integration, not deleting a ro
 
 - Node **24.19.0**, with built-in SQLite, for this reference adapter/test suite.
   OpenCode's separate Bun runtime is **not certified** by these Node tests.
-- Broker commit `e015a6f5d7cc32d0c0a90bd633fab8d94195417a`, exposing the reference modules described in
+- Broker commit `ba2219cd87a1feac23e01b23d2c2b3d3bdd65359`, exposing the reference modules described in
   [integration.md](docs/integration.md). This repository does not vendor them.
 - OpenCode's official `tool` helper, injected by the integrating host. Tests used
   `@opencode-ai/plugin@1.19.4`; no runtime npm dependency is installed here.

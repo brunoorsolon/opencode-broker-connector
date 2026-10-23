@@ -41,7 +41,7 @@ certification. OpenCode is not installed on this validation environment's PATH.
 
 Use the pinned Node runtime and an isolated helper directory. Do not run these
 commands against a user's global prefix/configuration. `BROKER_REFERENCE_DIR` must
-point to broker commit `e015a6f5d7cc32d0c0a90bd633fab8d94195417a`,
+point to broker commit `ba2219cd87a1feac23e01b23d2c2b3d3bdd65359`,
 matching the recorded snapshot, including its
 `test/helpers.mjs` for the local HTTP fixture.
 

@@ -201,7 +201,7 @@ test('host close during delayed registration closes a late committed lease befor
   } } });
   const started = f.start(); await registering; f.close.abort();
   const stopped = f.adapter.stop(); release();
-  await assert.rejects(started, { code: 'session_mismatch' }); await stopped;
+  await assert.rejects(started, { code: 'request_aborted' }); await stopped;
   assert.equal(f.calls.filter(call => call === 'close').length, 1);
   assert.equal(f.inbox.closed, true);
 });
@@ -217,6 +217,6 @@ test('close during reconnect waits for the final epoch rather than caching an ol
   } });
   const started = f.start(); await reconnecting; f.close.abort();
   const stopped = f.adapter.stop(); await Promise.resolve(); release();
-  await assert.rejects(started, { code: 'session_mismatch' }); await stopped;
+  await assert.rejects(started, { code: 'request_aborted' }); await stopped;
   assert.deepEqual(epochs, [2]); assert.equal(f.inbox.closed, true);
 });

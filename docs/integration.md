@@ -67,7 +67,7 @@ is explicitly insufficient. Do not clear the inbox merely to make reconnect work
 - `reference/mcp-stdio.mjs`: `TOOL_DEFINITIONS` (catalog only)
 - `reference/errors.mjs`: fixed safe `LocalError` and `safeError`
 
-Pin shared broker commit `e015a6f5d7cc32d0c0a90bd633fab8d94195417a`.
+Pin shared broker commit `ba2219cd87a1feac23e01b23d2c2b3d3bdd65359`.
 The repository's test snapshot hashes identify the exact local source used for
 verification. The loader exports this expected commit as documentation; it does
 not execute Git or independently authenticate the supplied directory. The trusted
