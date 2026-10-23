@@ -17,3 +17,7 @@ The prior cooperative factory remains the reviewed baseline.
 
 See the draft PR for the subsequent reviewed/tested checkpoint. Do not infer that
 `run` process ownership alone proves an unrelated server or TUI session lifetime.
+
+This historical WIP note describes commit `9eb4df888ae986e0c0a1589051358ba0dadaf73b`,
+not later reviewed revisions. See [current owned-run documentation](owned-run.md)
+and the draft PR for subsequent exact-process hardening and native test evidence.

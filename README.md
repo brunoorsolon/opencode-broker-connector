@@ -1,18 +1,20 @@
-# OpenCode review pair — cooperative broker adapter foundation
+# OpenCode review pair — exact-session cooperative broker tools
 
 Five native OpenCode tools reuse the [AI agent message broker](https://github.com/brunoorsolon/ai-agent-msg-broker)
 reference runtime, client and private SQLite inbox. No second wire protocol or
 adapter-specific message journal is introduced.
 
-**Status: integration foundation, not a drop-in certified OpenCode extension.**
-The native tool helper is tested; actual OpenCode CLI/TUI lifecycle integration is
-not. A project/server plugin initializer does not, by itself, prove ownership of
-one exact TUI session lifetime. Do not configure a dummy `currentBinding()` that
-always says a host is alive.
+Two explicit integration modes are available:
 
-An unfinished fresh-owned-run launcher is being preserved on this feature branch;
-see [the explicit WIP checkpoint](docs/owned-run-checkpoint.md). It is not yet an
-operator-supported launch path.
+- **Fresh owned headless run (candidate):** a Linux x64 launcher for the exact
+  official OpenCode **1.19.4** executable, with native root-session and OS process
+  incarnation checks. See [launch instructions and limits](docs/owned-run.md).
+- **Custom verified host:** the lower-level native-tool factory for a trusted
+  supervisor. A project/server plugin alone does **not** prove TUI ownership.
+
+Existing TUI attachment/resume and automatic inbox wakeup are unsupported. The
+owned-run candidate has isolated actual-CLI evidence, not live-provider or full
+native-transport certification. The draft PR records its final review/CI status.
 
 ## Implemented
 
@@ -33,21 +35,23 @@ requires a separately evidenced native acceptance integration, not deleting a ro
 
 ## Requirements and integration
 
-- Node **24.19.0**, with built-in SQLite, for this reference adapter/test suite.
-  OpenCode's separate Bun runtime is **not certified** by these Node tests.
+- Node **24.19.0** for the launcher/test suite. The pinned OpenCode executable
+  embeds Bun **1.4.4**; native hooks/tools and shared SQLite primitives were
+  exercised under that runtime with a deterministic local provider.
 - Broker commit `ba2219cd87a1feac23e01b23d2c2b3d3bdd65359`, exposing the reference modules described in
   [integration.md](docs/integration.md). This repository does not vendor them.
-- OpenCode's official `tool` helper, injected by the integrating host. Tests used
-  `@opencode-ai/plugin@1.19.4`; no runtime npm dependency is installed here.
-- One trusted native host owner capable of exact session/project verification and
-  immediate close notification. If that capability is unavailable, do not enable
-  background broker registration/heartbeats for the session.
+- Locked official `@opencode-ai/plugin@1.19.4`: install locally with
+  `npm ci --ignore-scripts`. No global package or existing CLI install is changed.
+- Either the fresh-owned-run launcher above or a trusted native host owner with
+  exact session/project verification and immediate close notification. Never
+  substitute a dummy `currentBinding()` that always returns alive.
 
-See [integration and configuration](docs/integration.md), the callable
-[owned-session example](examples/owned-session.mjs), and
-[verification/reproduction](docs/verification.md). The example is a function for
-an existing verified supervisor, not a shell launcher or an auto-attach plugin.
-Existing OpenCode installations/configuration are unchanged.
+Start with [owned-run launch instructions](docs/owned-run.md), or use the
+[custom-host integration contract](docs/integration.md) and callable
+[owned-session example](examples/owned-session.mjs). See
+[verification/reproduction](docs/verification.md) for distinct native and transport
+test evidence. Existing native cwd/policies/plugins are preserved; no `--auto`,
+permission grant or existing-project configuration overwrite is added.
 
 ## Safety boundary
 

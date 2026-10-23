@@ -1,5 +1,9 @@
 # Native host integration contract
 
+For a bounded user-launchable mode, see [fresh owned headless run](owned-run.md).
+This document describes the separate lower-level custom-supervisor interface; it
+does not imply that a generic project plugin can attach to an existing TUI.
+
 ## Supported native shape, unsupported lifecycle inference
 
 Official [custom-tool documentation](https://opencode.ai/docs/custom-tools/) and
@@ -21,8 +25,8 @@ inspected and the real helper was executed during tests.
 
 The ordinary plugin initializer is project/server scoped. Neither that initializer,
 a server PID, a persisted transcript, session status/idle, nor session ID alone is
-sufficient proof of an attached human TUI lifetime. This repository does **not**
-claim a supported turnkey lifecycle hook or invent one. A supported owner must
+sufficient proof of an attached human TUI lifetime. The generic factory does **not**
+claim a supported existing-TUI lifecycle hook or invent one. A supported owner must
 provide the contract below before this adapter can be enabled. A custom supervisor
 that only runs this factory without owning the actual native host is insufficient.
 

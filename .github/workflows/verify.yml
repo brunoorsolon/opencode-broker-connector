@@ -23,6 +23,14 @@ jobs:
           node-version: 24.19.0
       - name: Install locked official helper without lifecycle scripts
         run: npm ci --prefix test/official-helper --ignore-scripts --no-audit --no-fund
+      - name: Install pinned production plugin helper without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install pinned official Linux CLI fixture without lifecycle scripts
+        run: npm ci --prefix test/official-cli --ignore-scripts --no-audit --no-fund
+      - name: Verify exact official CLI executable bytes
+        run: |
+          echo '538fcb1b6408c8d4608822acee19f7ff5b3a3eb3383c0633c4f06170857312a7  test/official-cli/node_modules/opencode-linux-x64/bin/opencode' | sha256sum -c -
+          test/official-cli/node_modules/opencode-linux-x64/bin/opencode --version
       - name: Verify shared reference snapshot
         run: cd .test-reference && sha256sum -c ../docs/reference-snapshot.sha256
       - run: npm run check
@@ -30,4 +38,5 @@ jobs:
         env:
           BROKER_REFERENCE_DIR: ${{ github.workspace }}/.test-reference
           OPENCODE_TOOL_MODULE: ${{ github.workspace }}/test/official-helper/node_modules/@opencode-ai/plugin/dist/tool.js
+          OPENCODE_BINARY: ${{ github.workspace }}/test/official-cli/node_modules/opencode-linux-x64/bin/opencode
         run: npm test

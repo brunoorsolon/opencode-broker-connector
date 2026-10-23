@@ -10,5 +10,8 @@
     "test": "node --test test/*.test.mjs",
     "check": "find src bin plugin examples test \\( -name \"*.mjs\" -o -name \"*.ts\" \\) -not -path \"*/node_modules/*\" -print0 | xargs -0 -r -n1 node --check"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@opencode-ai/plugin": "1.19.4"
+  }
 }
