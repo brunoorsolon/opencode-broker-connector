@@ -10,6 +10,10 @@ not. A project/server plugin initializer does not, by itself, prove ownership of
 one exact TUI session lifetime. Do not configure a dummy `currentBinding()` that
 always says a host is alive.
 
+An unfinished fresh-owned-run launcher is being preserved on this feature branch;
+see [the explicit WIP checkpoint](docs/owned-run-checkpoint.md). It is not yet an
+operator-supported launch path.
+
 ## Implemented
 
 - `broker_list_clients`: discover authorized exact session addresses.

@@ -35,7 +35,7 @@ function nativeSchema(z, rule) {
   } else throw new Error('Unsupported shared tool schema; update this adapter before enabling it.');
   return schema;
 }
-function nativeShape(z, schema) {
+export function nativeShape(z, schema) {
   if (schema.type !== 'object' || schema.additionalProperties !== false || !schema.properties
     || !Array.isArray(schema.required) || schema.required.some(key => !Object.hasOwn(schema.properties, key))
     || Object.keys(schema).some(key => !['type', 'properties', 'required', 'additionalProperties'].includes(key))) {
