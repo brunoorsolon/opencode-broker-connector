@@ -106,9 +106,9 @@ export function createOpenCodeAdapter({ reference, tool, binding, currentBinding
     expected.signal.removeEventListener('abort', onClose);
     stopPromise = Promise.resolve().then(async () => {
       try {
-        await runtime.stop(); // Cancel an in-flight registration immediately.
+        await runtime.stop({ closeSession: false }); // Cancel, but do not close a stale pre-reconnect epoch.
         await runtimeStartPromise?.catch(() => {});
-        // Registration may have committed after the first close attempt. Keep
+        // Registration may have committed after cancellation. Keep
         // its journal open until a second close fences that exact late lease.
         await runtime.stop();
       } finally { inbox.close(); }

@@ -6,7 +6,7 @@ Node **24.19.0**; official npm `@opencode-ai/plugin` **1.19.4** (Zod **4.1.8**),
 installed in a disposable directory with scripts disabled. The production adapter
 has no npm dependency; the host injects its official helper and shared reference.
 
-The 15 tests exercise:
+The 16 tests exercise:
 
 1. Official native helper and all five strict shared schemas.
 2. Wrong native session/project/worktree, missing context signal and cancellation.
@@ -24,6 +24,7 @@ The 15 tests exercise:
 13. Unknown future schema constraints fail closed before registration.
 14. Host close during delayed registration closes the late lease before the inbox.
 15. Pre-import source pin rejects changed files and file symlinks.
+16. Close during reconnect waits for the final epoch before issuing the close.
 
 All credentials in the HTTP test are disposable random fixture values. No real
 broker, model, OpenCode service, TUI or user installation is contacted. The local
@@ -64,4 +65,4 @@ The test-helper lockfile pins all transitive npm versions and integrity hashes.
 GitHub Actions pins checkout/setup-node actions to commit SHAs and the shared
 broker to the commit above; it runs only isolated check/tests, not deployment.
 
-Independent review added enforced source-byte verification before reference import, a negative tamper/symlink test, and a delayed-registration/host-close regression. The inbox remains open until the late lease is explicitly closed. Latest aggregate: 15/15 tests pass.
+Independent review added enforced source-byte verification before reference import, a negative tamper/symlink test, and a delayed-registration/host-close regression. The inbox remains open until the late lease is explicitly closed. Latest aggregate: 16/16 tests pass.

@@ -205,3 +205,18 @@ test('host close during delayed registration closes a late committed lease befor
   assert.equal(f.calls.filter(call => call === 'close').length, 1);
   assert.equal(f.inbox.closed, true);
 });
+
+test('close during reconnect waits for the final epoch rather than caching an old fenced close', async t => {
+  let release, entered;
+  const blocked = new Promise(resolve => { release = resolve; });
+  const reconnecting = new Promise(resolve => { entered = resolve; });
+  const epochs = [];
+  const f = await fixture(t, { lease: 1, clientChanges: {
+    async reconnect() { entered(); await blocked; this.attachment.lease_epoch = 2; },
+    async closeSession() { epochs.push(this.attachment.lease_epoch); if (this.attachment.lease_epoch === 1) throw new reference.LocalError('stale_lease_epoch'); },
+  } });
+  const started = f.start(); await reconnecting; f.close.abort();
+  const stopped = f.adapter.stop(); await Promise.resolve(); release();
+  await assert.rejects(started, { code: 'session_mismatch' }); await stopped;
+  assert.deepEqual(epochs, [2]); assert.equal(f.inbox.closed, true);
+});
