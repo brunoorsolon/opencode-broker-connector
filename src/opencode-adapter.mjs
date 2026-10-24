@@ -1,3 +1,5 @@
+import { createCooperativeInbox } from './cooperative-inbox.mjs';
+import { ACK_DEFINITION } from './tool-catalog.mjs';
 import { isAbsolute, normalize } from 'node:path';
 
 const TOOL_NAMES = ['broker_list_clients', 'broker_send', 'broker_update_metadata', 'broker_message_status', 'broker_receive'];
@@ -60,7 +62,7 @@ function displayJSON(value) {
  * are insufficient lifetime proof. No automatic plugin attachment is implied.
  */
 export function createOpenCodeAdapter({ reference, tool, binding, currentBinding,
-  client, inbox = client?.inbox, observeMetadata = null, onDiagnostic = () => {} }) {
+  client, inbox = client?.inbox, observeMetadata = null, onDiagnostic = () => {}, cooperativeAck = false }) {
   if (!reference || typeof reference.AdapterRuntime !== 'function' || typeof reference.createTools !== 'function'
     || typeof reference.invokeTool !== 'function' || typeof reference.safeError !== 'function'
     || typeof reference.LocalError !== 'function' || !Array.isArray(reference.TOOL_DEFINITIONS)
@@ -76,7 +78,7 @@ export function createOpenCodeAdapter({ reference, tool, binding, currentBinding
     || new Set(definitions.map(definition => definition.name)).size !== TOOL_NAMES.length) {
     throw new Error('Shared tool catalog changed; review it before enabling this adapter.');
   }
-  const catalog = definitions.map(definition => {
+  const catalog = [...definitions, ...(cooperativeAck ? [ACK_DEFINITION] : [])].map(definition => {
     const args = nativeShape(tool.schema, definition.inputSchema);
     return { definition, args, validator: tool.schema.object(args).strict() };
   });
@@ -115,6 +117,7 @@ export function createOpenCodeAdapter({ reference, tool, binding, currentBinding
     });
     return stopPromise;
   }
+  const cooperativeInbox = cooperativeAck ? createCooperativeInbox({ inbox, isActive: () => started && !closed && !expected.signal.aborted }) : null;
   const onClose = () => { void stop().catch(() => diagnostic('adapter_close_failed')); };
   expected.signal.addEventListener('abort', onClose, { once: true });
   if (expected.signal.aborted) onClose();
@@ -166,6 +169,7 @@ export function createOpenCodeAdapter({ reference, tool, binding, currentBinding
           }
           const facade = reference.createTools({ client: scopedClient, inbox, observeMetadata,
             cooperativeBoundary: async read => { await assertBound(context); return read(); } });
+          if (cooperativeInbox) Object.assign(facade, cooperativeInbox);
           const result = await reference.invokeTool(facade, definition.name, parsed.data);
           // Unknown/cancelled host results never get repackaged as acceptance.
           // A write may already have committed; retain its stable send key.

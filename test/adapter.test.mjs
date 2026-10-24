@@ -150,7 +150,7 @@ test('concurrent native invocations retain separate exact contexts', async t => 
 });
 
 test('actual shared HTTP broker/client/SQLite path delivers only durable inbox ACK, then native cooperative peek', async t => {
-  const { httpFixture, registration } = await import(pathToFileURL(join(root, 'test/helpers.mjs')).href);
+  const { httpFixture, registration } = await import('./broker-fixture/test/helpers.mjs');
   const server = await httpFixture(t);
   const directory = mkdtempSync(join(tmpdir(), 'opencode-http-test-'));
   const identity = reference.newSessionIdentity('opencode');

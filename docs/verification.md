@@ -1,4 +1,28 @@
-# Verification and reproduction
+# Native plugin verification (October 24, 2026)
+
+The current default package adds native session-keyed cooperative tools and a self-contained pinned reference runtime. CI runs the full suite with the integrity-verified official OpenCode 1.19.4 Linux x64 fixture (embedded Bun 1.4.4).
+
+The new end-to-end test packs the actual npm package, extracts it to a disposable directory, loads that package's production plugin entry in the actual OpenCode CLI, connects to a real local Psst server over certificate-verified HTTPS with a disposable trusted CA, receives and explicitly acknowledges two FIFO messages, and sends a reply. It uses a deterministic local model provider, not a remote provider account. It exercises real native tool contexts, real BrokerClient requests and real SQLite in Bun. Temporary credentials are fixture-only; no live broker or user's sandbox is contacted.
+
+Other tests cover exact-session isolation, concurrent initialization, invalid/cancelled contexts, session deletion/disposal, non-blocking chat warm-up when SDK verification stalls, enrollment config permissions/type/URL checks, the explicit model-read acknowledgment ledger, packet contents and reference integrity. npm pack excludes broker daemon/test fixtures, credentials and journals.
+
+No test proves live provider authentication, every third-party plugin combination, every OpenCode version/platform, a human TUI's continued presence, or automatic model wakeup. Normal plugin registration is native-session scoped, not TUI ownership. Restarts create a new broker address and retain old journals without replay. Native consumption/action success is never claimed from a cooperative tool return.
+
+## Run all native checks
+
+```sh
+npm ci --ignore-scripts
+npm ci --prefix test/official-cli --ignore-scripts
+OPENCODE_BINARY="$PWD/test/official-cli/node_modules/opencode-linux-x64/bin/opencode" npm test
+npm run check
+npm run pack:check
+```
+
+Without OPENCODE_BINARY, actual-CLI tests are explicitly skipped, not treated as passed. CI supplies the binary. The final PR commit/CI is the authoritative evidence for the current test count.
+
+---
+
+## Historical foundation verification
 
 ## Evidence (2026-10-23 UTC)
 
