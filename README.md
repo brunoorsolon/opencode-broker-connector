@@ -46,10 +46,10 @@ Optional `broker.caFile` points to a trusted private CA; public certificates nor
 
 ## After npm publication
 
-The package is prepared as `@matuto-ai/opencode-broker-connector`. **A prepared package/workflow does not mean it has been published.** Once version `0.1.0` exists on npm, use this native OpenCode configuration instead of the local file:
+The package is prepared as `@matuto-ai/opencode-broker-connector`. **A prepared package/workflow does not mean it has been published.** Once version `0.1.1` exists on npm, use this native OpenCode configuration instead of the local file:
 
 ```json
-{"plugin": ["@matuto-ai/opencode-broker-connector@0.1.0"]}
+{"plugin": ["@matuto-ai/opencode-broker-connector@0.1.1"]}
 ```
 
 OpenCode installs npm plugins automatically using Bun. Keep the same private `PSST_CONFIG_FILE`; remove the duplicate local entry so the plugin does not load twice. See [publication](docs/publishing.md).
