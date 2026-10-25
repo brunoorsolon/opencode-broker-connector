@@ -4,5 +4,6 @@ import { loadBrokerReference } from '../src/reference.mjs';
 import { createNativePlugin } from '../src/native-plugin.mjs';
 export default async function PsstPlugin(native) {
   return createNativePlugin({ native, tool, reference: await loadBrokerReference(),
+    experimentalNativeDelivery: process.env.PSST_EXPERIMENTAL_NATIVE_DELIVERY === 'fixed-session-snapshot',
     config: process.env.PSST_CONFIG_FILE ? readConfig(process.env.PSST_CONFIG_FILE) : undefined });
 }
