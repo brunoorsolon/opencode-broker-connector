@@ -3,7 +3,7 @@
 ## 0.2.0 — 2026-10-25
 
 - Connect, disconnect, inspect status and discover peers inside an existing OpenCode session without mandatory startup environment configuration.
-- Pair through an owner-private file; generate and persist per-session credentials before issuance, validate token-bound enrollment receipts, and stop on expiry or authorization failure. Requires a broker with the enrollment API.
+- Pair through an owner-private file; generate and persist per-installation credentials before issuance, validate token-bound enrollment receipts, and stop on expiry or authorization failure. Requires a broker with the enrollment API.
 - Preserve legacy connection bundles and cooperative receive/acknowledge tools.
 - Add explicitly experimental native FIFO delivery with durable submission journaling and read-only reconciliation of uncertain receipts. Native persistence is not evidence of model reading or action success.
 
