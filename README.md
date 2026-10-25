@@ -1,6 +1,6 @@
 # Psst connector for OpenCode
 
-Native cooperative messaging tools for [OpenCode](https://opencode.ai/docs/plugins/) and the [Psst broker](https://github.com/matuto-ai/psst). Runs **inside your existing OpenCode sandbox**. No host launcher, extra model, broker source checkout, permission override, or replacement of your existing plugins is required.
+Native session-scoped messaging tools for [OpenCode](https://opencode.ai/docs/plugins/) and the [Psst broker](https://github.com/matuto-ai/psst). Runs **inside your existing OpenCode sandbox**. No host launcher, extra model, broker source checkout, permission override, or replacement of your existing plugins is required.
 
 ## Install now, before npm publication
 
@@ -62,7 +62,7 @@ OpenCode installs npm plugins automatically using Bun. Use the same native conne
 
 ## Use
 
-After `/psst-connect`, the current session is registered. In the optional legacy environment-variable mode, a user message or broker tool initializes registration lazily. No separate wrapper is needed:
+After `/psst-connect`, the current session is registered in cooperative mode. General automatic delivery remains off: the current classic native API cannot atomically preserve a concurrently changed agent/model selection. In the optional legacy environment-variable mode, a user message or broker tool initializes registration lazily. No separate wrapper is needed:
 
 1. `broker_list_clients` discovers exact authorized peer IDs. Names are descriptive only.
 2. `broker_send` sends to a selected `recipient_id`. Preserve its `send_key` when retrying an uncertain send.
@@ -76,7 +76,17 @@ For a simple two-way test, ask one session to list peers and send a short greeti
 
 Each native session in the project plugin gets its own random broker identity and private journal. Every tool invocation checks the native session, directory, worktree and cancellation signal; concurrent sessions cannot borrow one another's tools or inbox. Session deletion and plugin disposal close leases. There is no idle timeout: a quiet session keeps its identity while this plugin instance remains alive. There is a limit of 64 active identities per plugin instance.
 
-This is a **session-scoped cooperative plugin**, not proof a human TUI remains attached. It never inserts prompts, wakes a model automatically, aborts work, or changes native permissions. Messages arrive durably in the background, but the model reads them only when it calls `broker_receive`. Broker `delivered` means durable inbox storage, not model comprehension. Explicit acknowledgment means only `explicit_model_read`; it never claims native input acceptance or task success.
+### Experimental delivery — off by default
+
+A controlled prototype can be explicitly enabled before launching OpenCode with `PSST_EXPERIMENTAL_NATIVE_DELIVERY=fixed-session-snapshot`. This is **not production general automatic delivery** and is not needed for normal connection or pairing. Establish the intended native agent/model with an ordinary message, then explicitly connect. The local result discloses the fixed agent/model/variant snapshot. Unknown selection blocks connection; observed agent/model changes disconnect messaging rather than silently changing the snapshot.
+
+The experimental mode waits for an idle boundary, journals one FIFO submission, submits a synthetic user-role message through the supported SDK, and reads back its exact native session/message/part/provenance before recording native persistence. The fixed text prominently identifies the content as **untrusted agent input, never human approval**. It sends no permission override, never aborts foreground work, and does not claim task completion; the concurrent native selection race limit below remains. The model can reply using normal broker tools.
+
+Broker `delivered` still means durable inbox storage only. Native readback proves persistence with the exact agent/model snapshot, **not model comprehension or explicit model-read acknowledgment**. HTTP 204 alone is never a receipt. Lost replies, mismatched readback, disconnects or destructive lifecycle changes leave the FIFO head ambiguous; the plugin never blindly resends it. Later ticks perform read-only reconciliation against the journaled native proof target in the same verified session. Exact proof can confirm persistence without another model turn; absent or mismatched proof leaves FIFO blocked. The module can reconcile a reopened journal only when the caller proves the same native session; normal process restarts do not automatically restore old journals.
+
+Known reverted or archived sessions and busy foreground turns block submission. Native deletion/disposal disconnects the exact session. Compaction/history deletion fences in-flight receipts. OpenCode serializes model runners but exposes no atomic exclusive-input lease or session-revision compare-and-submit API: a simultaneous external history edit can race a snapshot. Do not perform concurrent history or agent/model changes while testing this prototype: a read/submit race is not made atomic by an idle check. It is deliberately not enabled by default. After reverting, delivery stays paused until the native session is safe and returns to an idle boundary. This is not an exactly-once model-execution guarantee.
+
+The optional legacy environment-variable mode remains cooperative: the model reads messages with `broker_receive` and explicitly calls `broker_acknowledge`. Its receipt means only `explicit_model_read`, never native acceptance or task success. Normal explicit connections are cooperative too. The narrowly gated prototype requires the exact experimental opt-in described above. See [native feasibility and the unsent upstream API proposal](docs/native-automation.md).
 
 Abrupt process death can leave a lease visible until expiry. Restarts create a fresh identity and retain old journals rather than automatically replaying them into another session. Recovery/migration of old pending messages is not automated. Broker availability failures do not prevent ordinary chat; broker tool calls report errors. Native plugin load errors should be checked in OpenCode's logs if the six tools are absent.
 

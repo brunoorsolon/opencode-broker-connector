@@ -83,3 +83,19 @@ test('unreachable native SDK warm-up never delays ordinary user chat',async t=>{
  assert.match(await command('psst-status','','b'),/"connected":false/);assert.match(await command('psst-disconnect'),/"connected":false/);
  assert.equal(f.closes(),1);await f.hooks['chat.message']({sessionID:'a'},{message:{role:'user',sessionID:'a'}});await delay(0);assert.equal(f.registrations(),1);
  });
+test('disconnect cancels pending connect and concurrent connect cannot replace it',async t=>{
+ let release,loaded=0;const f=await fixture(t,{config:undefined,connectFile:async()=>{loaded++;await new Promise(r=>release=r);return {stateDirectory:join(f.dir,'state'),broker:{}};}});
+ const command=async name=>{const out={parts:[]};await f.hooks['command.execute.before']({command:name,arguments:'/private/file',sessionID:'a'},out);return out.parts[0].text;};
+ const pending=command('psst-connect');await delay(0);assert.equal(loaded,1);
+ assert.match(await command('psst-connect'),/psst_command_failed/);assert.equal(loaded,1);
+ assert.match(await command('psst-disconnect'),/"connected":false/);release();assert.match(await pending,/psst_command_failed/);assert.equal(f.registrations(),0);
+});
+
+test('experimental delivery requires explicit opt-in and known native selection; change disconnects',async t=>{
+ let loaded=0;const unknown=await fixture(t,{config:undefined,experimentalNativeDelivery:true,connectFile:async()=>{loaded++;throw new Error('must not read');}});
+ let out={parts:[]};await unknown.hooks['command.execute.before']({command:'psst-connect',arguments:'/private/file',sessionID:'a'},out);assert.match(out.parts[0].text,/psst_command_failed/);assert.equal(loaded,0);
+ const f=await fixture(t,{config:undefined,experimentalNativeDelivery:true,connectFile:async()=>({stateDirectory:join(f.dir,'state'),broker:{}})});
+ f.native.client.session.get=async({path})=>({data:{id:path.id,directory:f.dir,agent:'plan',model:{providerID:'fixture',id:'fake',variant:'default'}}});
+ out={parts:[]};await f.hooks['command.execute.before']({command:'psst-connect',arguments:'/private/file',sessionID:'a'},out);assert.match(out.parts[0].text,/experimental_fixed_snapshot/);assert.match(out.parts[0].text,/"agent":"plan"/);
+ await f.hooks.event({event:{type:'session.updated',properties:{info:{id:'a',agent:'build',model:{providerID:'fixture',id:'fake',variant:'default'}}}}});await delay(10);assert.equal(f.closes(),1);
+});
