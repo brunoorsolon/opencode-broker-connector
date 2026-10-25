@@ -1,5 +1,5 @@
 {
-  "name": "opencode-broker-connector",
+  "name": "@matuto-ai/opencode-broker-connector",
   "version": "0.1.0",
   "type": "module",
   "engines": {
