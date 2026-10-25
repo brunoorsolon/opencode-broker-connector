@@ -27,7 +27,8 @@
     "docs",
     "LICENSE",
     "README.md",
-    "vendor/broker/ORIGIN.md"
+    "vendor/broker/ORIGIN.md",
+    "vendor/enrollment"
   ],
   "repository": {
     "type": "git",

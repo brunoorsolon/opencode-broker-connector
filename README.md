@@ -50,6 +50,22 @@ The standard Psst enrollment bundle (`format: "broker-client-bundle-v1"`, `allow
 
 Optional `broker.caFile` points to a trusted private CA; public certificates normally need no extra setting. TLS verification is never disabled. A successful `/healthz` call is not enrollment: the broker must authorize the token for client type `opencode` and a scope shared with the intended peer.
 
+## Explicit per-session pairing
+
+After the broker enrollment upgrade is reviewed and deployed, follow its [operator pairing guide](https://github.com/matuto-ai/psst/blob/3e908e79966d886a02d372c103e31dec6e900c1a/docs/pairing-operator.md). An operator first authorizes a short-lived, client-type/scope-bound pairing grant on the broker and writes its private `psst-pairing-v1` file. Place that file inside the existing sandbox (owner-only `0600`), then run:
+
+```text
+/psst-connect /absolute/private/path/opencode-pairing.json
+```
+
+The plugin generates and durably saves its own random credential before issuance, sends only the credential hash over verified HTTPS, and stores the issued credential and token-bound receipt privately. Neither pairing secret nor bearer token enters command arguments, chat, model input, URLs or logs. The helper uses system TLS trust; it does not disable certificate verification or accept a pairing-file CA override.
+
+The private installation directory is `$XDG_STATE_HOME/psst/opencode/<project-and-session-hash>` (default `~/.local/state/psst/opencode/...`). Preserve it inside the sandbox to safely retry a lost enrollment response with the **same file and native session**. A different native session needs its own operator pairing grant; a redeemed grant cannot be reused to create another key. No control-plane UI or public signup service is installed.
+
+`/psst-status` reports only a nonsecret credential ID and expiry. Expired or rejected credentials stop messaging and require explicit re-pairing; no silent credential replacement occurs. Disconnect before changing a live connection. Re-pairing always creates a fresh local broker identity/inbox and never imports another principal's pending messages.
+
+New helper bundles carry `enrollment_receipt_file: "enrollment.json"`; that exact sibling receipt is mandatory and checked against the private token hash, broker and client type. Missing or corrupt receipt is a hard error, not a legacy fallback. Unmarked legacy bundles still work unchanged. The optional legacy environment mode may read an existing bundle but never performs enrollment automatically.
+
 ## After npm publication
 
 The package is prepared as `@matuto-ai/opencode-broker-connector`. **A prepared package/workflow does not mean it has been published.** Once version `0.1.1` exists on npm, use this native OpenCode configuration instead of the local file:
