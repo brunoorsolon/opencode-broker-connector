@@ -1,0 +1,39 @@
+{
+  "name": "opencode-broker-connector",
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24.19.0 <25"
+  },
+  "scripts": {
+    "test": "node scripts/test.mjs",
+    "check": "find src bin plugin examples scripts test vendor \\( -name \"*.mjs\" -o -name \"*.ts\" \\) -not -path \"*/node_modules/*\" -print0 | xargs -0 -r -n1 node --check",
+    "pack:check": "node scripts/pack-check.mjs"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@opencode-ai/plugin": "1.19.4"
+  },
+  "description": "Session-scoped Psst messaging plugin for OpenCode",
+  "main": "./plugin/index.mjs",
+  "exports": "./plugin/index.mjs",
+  "files": [
+    "plugin",
+    "src",
+    "bin",
+    "vendor/broker/reference",
+    "vendor/broker/src/protocol.mjs",
+    "vendor/broker/LICENSE",
+    "docs",
+    "LICENSE",
+    "README.md",
+    "vendor/broker/ORIGIN.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brunoorsolon/opencode-broker-connector.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

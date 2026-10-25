@@ -1,0 +1,8 @@
+import { spawnSync } from 'node:child_process';
+import assert from 'node:assert/strict';
+const packed = spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], { encoding: 'utf8' });
+assert.equal(packed.status, 0, packed.stderr);
+const files = JSON.parse(packed.stdout)[0].files.map(x => x.path);
+for (const file of ['plugin/index.mjs', 'src/native-plugin.mjs', 'src/cooperative-inbox.mjs', 'vendor/broker/reference/inbox.mjs', 'vendor/broker/src/protocol.mjs', 'vendor/broker/LICENSE']) assert.ok(files.includes(file), `Missing ${file}`);
+assert.equal(files.some(path => /(^|\/)(test|node_modules|\.github)(\/|$)|\.token$|\.sqlite$|connection\.json$/.test(path)), false);
+console.log(`Verified ${files.length} packaged files; no tests, credentials or state.`);

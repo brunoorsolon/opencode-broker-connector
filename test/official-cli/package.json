@@ -1,0 +1,7 @@
+{
+  "name": "opencode-owned-cli-test-fixture",
+  "private": true,
+  "dependencies": {
+    "opencode-linux-x64": "1.19.4"
+  }
+}
