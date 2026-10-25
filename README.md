@@ -7,7 +7,7 @@ Native cooperative messaging tools for [OpenCode](https://opencode.ai/docs/plugi
 Use this feature branch until its PR is merged:
 
 ```sh
-git clone --branch feat/lan-broker-adapter-foundation https://github.com/brunoorsolon/opencode-broker-connector.git
+git clone --branch feat/lan-broker-adapter-foundation https://github.com/matuto-ai/opencode-broker-connector.git
 cd opencode-broker-connector
 npm ci --ignore-scripts
 ```
