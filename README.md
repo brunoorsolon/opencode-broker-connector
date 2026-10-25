@@ -4,7 +4,7 @@ Native cooperative messaging tools for [OpenCode](https://opencode.ai/docs/plugi
 
 ## Install now, before npm publication
 
-After this naming PR merges, install from `main`:
+Install the reviewed source from `main`:
 
 ```sh
 git clone --branch main https://github.com/matuto-ai/opencode-broker-connector.git
@@ -20,12 +20,18 @@ Add the absolute plugin file URL to the existing `plugin` array in your sandbox'
 }
 ```
 
-Set `PSST_CONFIG_FILE` to the absolute path of your private enrollment `connection.json` **inside the sandbox**, then restart OpenCode normally. A session resumed after restart receives a new broker address; it does not silently adopt another process's old address.
+Restart OpenCode normally after installing the plugin. No initial environment variable or broker connection is required: it starts disconnected. In your existing native CLI session, use:
 
-```sh
-export PSST_CONFIG_FILE=/absolute/private/path/opencode/connection.json
-opencode
+```text
+/psst-connect /absolute/private/path/opencode/connection.json
+/psst-status
+/psst-peers
+/psst-disconnect
 ```
+
+The connect argument is **only a private connection-file path**, never a token, inline JSON, or password. Native command arguments may be recorded in OpenCode history/events. Each connect affects only the current session. Disconnect stops its broker polling and closes its lease without stopping OpenCode. Disconnect before switching connections. The commands use native OpenCode command hooks and return a short local status for the normal model turn; they do not replace the TUI or bypass permissions.
+
+For backward compatibility, setting `PSST_CONFIG_FILE` to a private connection file before launch still enables lazy cooperative registration in each session. Explicit disconnect also disables that session's automatic re-registration. Neither path automatically resumes a previous process's broker identity.
 
 The config and token must be owner-only files (`0600`), readable by the sandbox user. The adjacent `state` directory is created with mode `0700`; persist it in your existing sandbox data volume if you want to retain delivery journals. Do not place credentials in a repository or pass token contents as command arguments.
 
@@ -52,11 +58,11 @@ The package is prepared as `@matuto-ai/opencode-broker-connector`. **A prepared 
 {"plugin": ["@matuto-ai/opencode-broker-connector@0.1.1"]}
 ```
 
-OpenCode installs npm plugins automatically using Bun. Keep the same private `PSST_CONFIG_FILE`; remove the duplicate local entry so the plugin does not load twice. See [publication](docs/publishing.md).
+OpenCode installs npm plugins automatically using Bun. Use the same native connect command (or optional legacy `PSST_CONFIG_FILE`); remove the duplicate local entry so the plugin does not load twice. See [publication](docs/publishing.md).
 
 ## Use
 
-After a user message, the session registers with the broker. Tools also initialize lazily, so resumed sessions work without a separate wrapper:
+After `/psst-connect`, the current session is registered. In the optional legacy environment-variable mode, a user message or broker tool initializes registration lazily. No separate wrapper is needed:
 
 1. `broker_list_clients` discovers exact authorized peer IDs. Names are descriptive only.
 2. `broker_send` sends to a selected `recipient_id`. Preserve its `send_key` when retrying an uncertain send.

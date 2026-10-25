@@ -31,8 +31,8 @@ test('normal plugin lazily binds existing session; parallel sessions never share
  const [a,b,c]=await Promise.all([run('existing-a'),run('existing-b'),run('existing-a')]);
  assert.equal(a.session,'existing-a');assert.equal(b.session,'existing-b');assert.equal(c.identity,a.identity);assert.notEqual(a.identity,b.identity);assert.equal(f.registrations(),2);
  await f.hooks.event({event:{type:'session.deleted',properties:{info:{id:'existing-a'}}}});assert.equal(f.closes(),1);
- const next=await run('existing-a');assert.notEqual(next.identity,a.identity);
- await f.hooks.dispose();assert.equal(f.closes(),3);
+ const next=await run('existing-a');assert.equal(next.error.code,'invalid_configuration');
+ await f.hooks.dispose();assert.equal(f.closes(),2);
  assert.equal((await run('existing-b')).error.code,'session_mismatch');
 });
 test('foreign directory, cancelled context and missing native context cannot register',async t=>{
@@ -73,3 +73,13 @@ test('unreachable native SDK warm-up never delays ordinary user chat',async t=>{
  await f.hooks['chat.message']({sessionID:'root'},{message:{role:'user',sessionID:'root'}});assert.ok(Date.now()-before<100);
  await f.hooks.dispose();assert.equal(f.registrations(),0);
 });
+
+ test('disconnected install registers local commands; explicit file connect/disconnect is session scoped',async t=>{
+ const f=await fixture(t,{config:undefined,connectFile:async(path,options)=>{assert.equal(path,'/private/connection.json');assert.equal(options.clientType,'opencode');return {stateDirectory:join(f.dir,'state'),broker:{}};}});
+ await f.hooks['chat.message']({sessionID:'a'},{message:{role:'user',sessionID:'a'}});await delay(0);assert.equal(f.registrations(),0);
+ const config={};await f.hooks.config(config);assert.ok(config.command['psst-connect']);
+ async function command(name,args='',id='a'){const out={parts:[{type:'text',text:'original template'}]};await f.hooks['command.execute.before']({command:name,arguments:args,sessionID:id},out);return out.parts[0].text;}
+ assert.match(await command('psst-connect','/private/connection.json'),/cooperative_pull/);assert.equal(f.registrations(),1);
+ assert.match(await command('psst-status','','b'),/"connected":false/);assert.match(await command('psst-disconnect'),/"connected":false/);
+ assert.equal(f.closes(),1);await f.hooks['chat.message']({sessionID:'a'},{message:{role:'user',sessionID:'a'}});await delay(0);assert.equal(f.registrations(),1);
+ });

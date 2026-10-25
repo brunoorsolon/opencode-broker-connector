@@ -110,3 +110,7 @@ arbitration; per-CLI Podman containers or two-host LAN operation.
 `broker_receive` remains a non-consuming FIFO **peek**. A native tool return or
 model read does not advance the inbox. See [owned-run instructions](owned-run.md)
 for operator requirements and failure/unknown-outcome behavior.
+
+## Explicit connection regression coverage
+
+The packed production plugin is loaded by official OpenCode 1.19.4 with no `PSST_CONFIG_FILE`. A native session command connects using a private file, discovery sees the exact new session, and native disconnect prevents subsequent message injection while the host remains available. The fixture uses a deterministic local model provider and a trusted loopback TLS broker; no paid provider, user credential, desktop/TUI automation, or production installation is exercised. Unit tests cover disconnected startup, session-isolated status, disconnect/no re-registration, and deleted-session fencing. Automatic model delivery and pairing issuance are separate changes, not claims of this connection-only step.
