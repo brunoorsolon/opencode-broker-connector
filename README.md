@@ -68,10 +68,10 @@ New helper bundles carry `enrollment_receipt_file: "enrollment.json"`; that exac
 
 ## After npm publication
 
-The package is prepared as `@matuto-ai/opencode-broker-connector`. **A prepared package/workflow does not mean it has been published.** Once version `0.1.1` exists on npm, use this native OpenCode configuration instead of the local file:
+The package is prepared as `@matuto-ai/opencode-broker-connector`. **A prepared package/workflow does not mean it has been published.** Once version `0.2.0` exists on npm, use this native OpenCode configuration instead of the local file:
 
 ```json
-{"plugin": ["@matuto-ai/opencode-broker-connector@0.1.1"]}
+{"plugin": ["@matuto-ai/opencode-broker-connector@0.2.0"]}
 ```
 
 OpenCode installs npm plugins automatically using Bun. Use the same native connect command (or optional legacy `PSST_CONFIG_FILE`); remove the duplicate local entry so the plugin does not load twice. See [publication](docs/publishing.md).
