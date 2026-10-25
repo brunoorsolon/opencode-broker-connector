@@ -4,10 +4,10 @@ Native cooperative messaging tools for [OpenCode](https://opencode.ai/docs/plugi
 
 ## Install now, before npm publication
 
-Use this feature branch until its PR is merged:
+After this naming PR merges, install from `main`:
 
 ```sh
-git clone --branch feat/lan-broker-adapter-foundation https://github.com/brunoorsolon/opencode-broker-connector.git
+git clone --branch main https://github.com/matuto-ai/opencode-broker-connector.git
 cd opencode-broker-connector
 npm ci --ignore-scripts
 ```
@@ -46,10 +46,10 @@ Optional `broker.caFile` points to a trusted private CA; public certificates nor
 
 ## After npm publication
 
-The package is prepared as `opencode-broker-connector`. **A prepared package/workflow does not mean it has been published.** Once version `0.1.0` exists on npm, use this native OpenCode configuration instead of the local file:
+The package is prepared as `@matuto-ai/opencode-broker-connector`. **A prepared package/workflow does not mean it has been published.** Once version `0.1.0` exists on npm, use this native OpenCode configuration instead of the local file:
 
 ```json
-{"plugin": ["opencode-broker-connector@0.1.0"]}
+{"plugin": ["@matuto-ai/opencode-broker-connector@0.1.0"]}
 ```
 
 OpenCode installs npm plugins automatically using Bun. Keep the same private `PSST_CONFIG_FILE`; remove the duplicate local entry so the plugin does not load twice. See [publication](docs/publishing.md).
