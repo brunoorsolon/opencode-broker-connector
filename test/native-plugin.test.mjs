@@ -99,3 +99,16 @@ test('experimental delivery requires explicit opt-in and known native selection;
  out={parts:[]};await f.hooks['command.execute.before']({command:'psst-connect',arguments:'/private/file',sessionID:'a'},out);assert.match(out.parts[0].text,/experimental_fixed_snapshot/);assert.match(out.parts[0].text,/"agent":"plan"/);
  await f.hooks.event({event:{type:'session.updated',properties:{info:{id:'a',agent:'build',model:{providerID:'fixture',id:'fake',variant:'default'}}}}});await delay(10);assert.equal(f.closes(),1);
 });
+
+test('enrolled credential expiry closes polling and reports re-pair requirement',async t=>{
+ const f=await fixture(t,{config:undefined,connectFile:async()=>({stateDirectory:join(f.dir,'state'),broker:{},enrollment:{credentialId:'enrolled-fixture',expiresAt:new Date(Date.now()+150).toISOString()}})});
+ const command=async name=>{const out={parts:[]};await f.hooks['command.execute.before']({command:name,arguments:'/private/file',sessionID:'a'},out);return out.parts[0].text;};
+ assert.match(await command('psst-connect'),/"connected":true/);await delay(1100);assert.equal(f.closes(),1);
+ const status=await command('psst-status');assert.match(status,/"connected":false/);assert.match(status,/credential_expired_repair_required/);
+ await f.hooks['chat.message']({sessionID:'a'},{message:{role:'user',sessionID:'a'}});await delay(0);assert.equal(f.registrations(),1);
+});
+test('authorization failure closes the exact session and never silently re-registers',async t=>{
+ let diagnostic,closes=0;const f=await fixture(t,{config:undefined,connectFile:async()=>({stateDirectory:join(f.dir,'state'),broker:{}}),adapterFactory:({client,onDiagnostic})=>{diagnostic=onDiagnostic;return {tools:{},async start(){},async stop(){closes++;client.inbox.close();}};}});
+ const command=async name=>{const out={parts:[]};await f.hooks['command.execute.before']({command:name,arguments:'/private/file',sessionID:'a'},out);return out.parts[0].text;};
+ assert.match(await command('psst-connect'),/"connected":true/);diagnostic({code:'unauthenticated'});await delay(10);assert.equal(closes,1);assert.match(await command('psst-status'),/credential_unusable_reconnect_required/);
+});

@@ -12,7 +12,7 @@ export async function createNativePlugin({ native, tool, reference, config, clie
   adapterFactory = createOpenCodeAdapter }) {
   const directory = realpathSync(native.directory), worktree = realpathSync(native.worktree);
   const sessions = new Map();
-  const connections = new Map(), disconnected = new Set();
+  const connections = new Map(), disconnected = new Set(), connectionErrors = new Map();
   const connecting = new Map();
   let disposed = false;
   async function sessionInfo(id, signal) {
@@ -34,6 +34,7 @@ export async function createNativePlugin({ native, tool, reference, config, clie
     const state = sessions.get(id);
     if (!state) return;
     state.controller.abort();
+    clearInterval(state.expiryTimer);
     if (state.closing) return state.closing;
     state.closing = (async () => {
       await state.starting?.catch(() => {});
@@ -53,7 +54,8 @@ export async function createNativePlugin({ native, tool, reference, config, clie
     if (state?.closing) { await state.closing; state = undefined; }
     if (state) { await state.starting; return state; }
     if (sessions.size >= 64) throw new reference.LocalError('owner_conflict');
-    state = { controller: new AbortController(), lifetime: Symbol('opencode plugin session'), adapter: null };
+    state = { controller: new AbortController(), lifetime: Symbol('opencode plugin session'), adapter: null,
+      enrollment: settings.enrollment };
     sessions.set(id, state);
     state.starting = (async () => {
       await sessionInfo(id, state.controller.signal);
@@ -64,15 +66,29 @@ export async function createNativePlugin({ native, tool, reference, config, clie
       const binding = { sessionID: id, directory, worktree, lifetime: state.lifetime, signal: state.controller.signal };
       const currentBinding = async () => {
         if (disposed || state.controller.signal.aborted || sessions.get(id) !== state) return null;
+        if (settings.enrollment && Date.parse(settings.enrollment.expiresAt) <= Date.now()) return null;
         try { await sessionInfo(id, state.controller.signal); } catch { return null; }
         return !disposed && !state.controller.signal.aborted && sessions.get(id) === state ? binding : null;
       };
       try {
         const client = clientFactory ? clientFactory(inbox) : new reference.BrokerClient({ ...settings.broker, inbox });
-        state.adapter = adapterFactory({ reference, tool, client, binding, currentBinding, cooperativeAck: true });
+        const invalidate = reason => {
+          connectionErrors.set(id, reason); disconnected.add(id); connections.delete(id);
+          queueMicrotask(() => { void close(id).catch(() => {}); });
+        };
+        state.adapter = adapterFactory({ reference, tool, client, binding, currentBinding, cooperativeAck: true,
+          onDiagnostic: entry => {
+            if (['unauthenticated', 'forbidden'].includes(entry.code)) invalidate('credential_unusable_reconnect_required');
+          } });
         await state.adapter.start({ name: settings.name ?? 'OpenCode', model: { provider: null, id: null, source: 'unknown' }, project: null });
         if (!await currentBinding()) throw new reference.LocalError('session_mismatch');
         state.client = client;
+        if (settings.enrollment) {
+          state.expiryTimer = setInterval(() => {
+            if (Date.parse(settings.enrollment.expiresAt) <= Date.now()) invalidate('credential_expired_repair_required');
+          }, 1000);
+          state.expiryTimer.unref?.();
+        }
         if (connection?.automatic) {
           state.delivery = createNativeDelivery({ native, sessionID: id, inbox, signal: state.controller.signal,
             verify: async () => await currentBinding() ? sessionInfo(id, state.controller.signal) : null,
@@ -110,7 +126,7 @@ export async function createNativePlugin({ native, tool, reference, config, clie
     async config(value) {
       value.command ??= {};
       for (const [name, description] of Object.entries({
-        'psst-connect': 'Connect this session using an absolute private connection file path (never a secret).',
+        'psst-connect': 'Connect this session using an absolute private pairing/connection file path (never a secret).',
         'psst-disconnect': 'Stop Psst messaging in this session.',
         'psst-status': 'Show this session’s Psst connection status.',
         'psst-peers': 'List currently addressable Psst peers.',
@@ -138,6 +154,7 @@ export async function createNativePlugin({ native, tool, reference, config, clie
           const settings = await connectFile(input.arguments.trim(), { clientType: 'opencode', sessionID: input.sessionID });
           if (disposed || connecting.get(input.sessionID) !== reservation) throw new Error('connect_cancelled');
           connections.set(input.sessionID, { config: settings, automatic: experimentalNativeDelivery, selection: selected });
+          connectionErrors.delete(input.sessionID);
           disconnected.delete(input.sessionID);
           try { await getSession(input.sessionID); }
           catch (error) { connections.delete(input.sessionID); throw error; }
@@ -149,7 +166,9 @@ export async function createNativePlugin({ native, tool, reference, config, clie
         } else if (input.command === 'psst-status') {
           const state = sessions.get(input.sessionID);
           result = { connected: !!state?.adapter, delivery: state?.delivery ? 'experimental_fixed_snapshot' : 'cooperative_pull',
-            last_delivery_status: state?.deliveryStatus ?? null };
+            last_delivery_status: state?.deliveryStatus ?? null,
+            credential_id: state?.enrollment?.credentialId ?? null, expires_at: state?.enrollment?.expiresAt ?? null,
+            connection_error: connectionErrors.get(input.sessionID) ?? null };
         } else {
           const state = sessions.get(input.sessionID);
           if (!state?.client) throw new Error('connect_required');
