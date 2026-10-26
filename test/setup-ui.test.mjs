@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { installSetupUI } from '../src/setup-ui.mjs';
@@ -11,7 +11,7 @@ async function fixture(t, overrides = {}) {
  const api={lifecycle:{signal:new AbortController().signal,onDispose:fn=>dispose=fn},keymap:{registerLayer:layer=>command=layer.commands[0]},ui:{toast:x=>toasts.push(x),DialogPrompt:props=>({kind:'prompt',...props}),DialogConfirm:props=>({kind:'confirm',...props}),DialogAlert:props=>({kind:'alert',...props}),dialog:{replace(render,close){onClose?.();dialog=render();onClose=close;},clear(){onClose?.();dialog=null;onClose=null;}}}};
  const helper={readApprovalState:()=>null,beginApproval:async opts=>{calls.push(['begin',opts]);return {state:'pending',requestId:'request'};},pollApproval:async opts=>{calls.push(['poll',opts]);return {state:'approved',requestId:'request',connectionFile:'/private/connection.json'};},...overrides.helper};
  await installSetupUI(api,{directory,loadHelper:async()=>helper,pause:async()=>{},select:async opts=>calls.push(['select',opts]),...overrides});
- return {api,calls,toasts,helper,open:()=>command.run(),dialog:()=>dialog,dispose:()=>dispose()};
+ return {directory,api,calls,toasts,helper,open:()=>command.run(),dialog:()=>dialog,dispose:()=>dispose()};
 }
 test('native URL form never enrolls on load; own dialog transition does not cancel approval',async t=>{
  const f=await fixture(t);assert.equal(f.calls.length,0);f.open();assert.equal(f.dialog().kind,'prompt');
@@ -27,7 +27,7 @@ test('duplicate submit creates only one operation and native disposal cancels la
  let release,count=0;const f=await fixture(t,{helper:{beginApproval:()=>{count++;return new Promise(r=>release=r);}}});f.open();const prompt=f.dialog();const pending=prompt.onConfirm('https://broker.example');await tick();await prompt.onConfirm('https://broker.example');assert.equal(count,1);f.dispose();release({state:'approved',connectionFile:'/private/c.json'});await pending;assert.equal(f.calls.length,0);
 });
 test('explicit replacement confirms and survives native confirmation clear',async t=>{
- const f=await fixture(t,{helper:{readApprovalState:()=>({state:'approved',requestId:'prior'})}});f.open();await f.dialog().onConfirm('https://broker.example');assert.equal(f.dialog().kind,'confirm');assert.equal(f.calls.length,0);
+ const f=await fixture(t,{helper:{readApprovalState:()=>({state:'approved',requestId:'prior',connectionFile:'/private/current.json'})}});writeFileSync(join(f.directory,'installation.json'),JSON.stringify({format:'psst-opencode-installation-v1',revision:'selected',connectionFile:'/private/current.json'}),{mode:0o600});f.open();await f.dialog().onConfirm('https://broker.example');assert.equal(f.dialog().kind,'confirm');assert.equal(f.calls.length,0);
  f.dialog().onConfirm();f.api.ui.dialog.clear();await tick();assert.equal(f.calls[0][1].replaceRequestId,'prior');assert.equal(f.calls.at(-1)[0],'select');
 });
 test('unsafe URL, denial and transient failures never expose details or select',async t=>{
@@ -41,4 +41,7 @@ test('native setup honors retry backoff and retries the same explicit request',a
 });
 test('poll returning another request cannot select the wrong approved installation',async t=>{
  const f=await fixture(t,{helper:{pollApproval:async()=>({state:'approved',requestId:'different',connectionFile:'/private/wrong.json'})}});f.open();await f.dialog().onConfirm('https://broker.example');assert.equal(f.calls.filter(x=>x[0]==='select').length,0);assert.equal(f.toasts.at(-1).variant,'warning');
+});
+test('cancelled approval not yet selected is resumed instead of forcing a new key',async t=>{
+ const f=await fixture(t,{helper:{readApprovalState:()=>({state:'approved',requestId:'prior',connectionFile:'/private/candidate.json'}),beginApproval:async opts=>{assert.equal(opts.replaceRequestId,undefined);return {state:'approved',requestId:'prior',connectionFile:'/private/candidate.json'};}}});f.open();await f.dialog().onConfirm('https://broker.example');assert.equal(f.calls.at(-1)[0],'select');assert.equal(f.toasts.at(-1).variant,'success');
 });

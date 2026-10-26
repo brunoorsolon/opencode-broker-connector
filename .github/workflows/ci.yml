@@ -63,7 +63,7 @@ jobs:
           echo '538fcb1b6408c8d4608822acee19f7ff5b3a3eb3383c0633c4f06170857312a7  test/official-cli/node_modules/opencode-linux-x64/bin/opencode' | sha256sum -c -
           "$RUNTIME" pull docker.io/library/node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df
       - name: Real native approval, 30 sessions, container recreation and revocation
-        run: node --test test/native-approval-integration.test.mjs
+        run: timeout --signal=TERM --kill-after=15s 120s node --test test/native-approval-integration.test.mjs
         env:
           OPENCODE_BINARY: ${{ github.workspace }}/scripts/native-container.sh
           PSST_REAL_OPENCODE_BINARY: ${{ github.workspace }}/test/official-cli/node_modules/opencode-linux-x64/bin/opencode

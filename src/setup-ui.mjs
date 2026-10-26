@@ -31,7 +31,8 @@ export async function installSetupUI(api, { directory = installationDirectory(),
           if (brokerUrl.protocol !== 'https:' || brokerUrl.username || brokerUrl.password || brokerUrl.search || brokerUrl.hash || brokerUrl.pathname !== '/') throw new Error();
           const helper = await loadHelper();
           if (!alive()) return;
-          const expectedRevision = readSelection(directory)?.revision ?? null;
+          const selected = readSelection(directory);
+          const expectedRevision = selected?.revision ?? null;
           const options = { directory, brokerUrl: brokerUrl.href, clientType: 'opencode' };
           const prior = helper.readApprovalState(options);
           async function enroll(replaceRequestId) {
@@ -66,7 +67,7 @@ export async function installSetupUI(api, { directory = installationDirectory(),
             close(); api.ui.dialog.clear();
             toast('Approved installation saved. New sessions connect automatically; existing sessions retain their authorization. Receive remains cooperative.', 'success');
           }
-          if (prior && prior.state !== 'pending') {
+          if (prior && prior.state !== 'pending' && (prior.state !== 'approved' || selected?.connectionFile === prior.connectionFile)) {
             replace(() => api.ui.DialogConfirm({ title: 'Replace Psst authorization?',
               message: 'Request a new authorization? The current connection and unread messages remain unchanged until approval; existing sessions keep their connection.',
               onCancel: close, onConfirm: () => {

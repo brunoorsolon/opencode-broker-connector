@@ -11,6 +11,8 @@ import { fixture } from './broker-fixture/test/helpers.mjs';
 import { createBrokerServer } from './broker-fixture/src/server.mjs';
 import { loadBrokerReference } from '../src/reference.mjs';
 const ref=await loadBrokerReference();
+async function stopHost(child){if(child.exitCode!==null||child.signalCode!==null)return;const closed=new Promise(resolve=>child.once('close',resolve));child.kill('SIGTERM');await Promise.race([closed,delay(10000,undefined,{ref:false})]);if(child.exitCode===null&&child.signalCode===null)child.kill('SIGKILL');}
+
 test('actual broker admin approval authorizes 30 native sessions and survives host restart without enrollment', {skip:!process.env.OPENCODE_BINARY || !process.env.PSST_APPROVAL_BROKER_DIR,timeout:60000},async t=>{
  const dir=mkdtempSync(join(tmpdir(),'psst-native-https-'));t.after(()=>rmSync(dir,{recursive:true,force:true}));
  const pack=spawnSync('npm',['pack','--json','--ignore-scripts','--pack-destination',dir,'--cache',join(dir,'npm-cache')],{encoding:'utf8',cwd:fileURLToPath(new URL('../',import.meta.url))});assert.equal(pack.status,0,pack.stderr);
@@ -46,7 +48,7 @@ test('actual broker admin approval authorizes 30 native sessions and survives ho
  const env={PATH:process.env.PATH,HOME:home,XDG_CONFIG_HOME:join(home,'config'),XDG_DATA_HOME:join(home,'data'),XDG_CACHE_HOME:join(home,'cache'),XDG_STATE_HOME:join(home,'state'),OPENCODE_DISABLE_MODELS_FETCH:'1'};
  env.PSST_OPENCODE_CONFIG_DIR=installation;env.NODE_EXTRA_CA_CERTS=cert;
  for(const key of ['PSST_CONTAINER_RUNTIME','PSST_CONTAINER_IMAGE','PSST_CONTAINER_REPO','PSST_REAL_OPENCODE_BINARY'])if(process.env[key])env[key]=process.env[key];
- const child=spawn(process.env.OPENCODE_BINARY,['serve','--hostname','127.0.0.1','--port','0'],{cwd:project,env,stdio:['ignore','pipe','pipe']});t.after(()=>child.kill('SIGKILL'));
+ const child=spawn(process.env.OPENCODE_BINARY,['serve','--hostname','127.0.0.1','--port','0'],{cwd:project,env,stdio:['ignore','pipe','pipe']});t.after(()=>stopHost(child));
  let output='',errors='';child.stdout.on('data',x=>output+=x);child.stderr.on('data',x=>errors+=x);
  let base;
  for(let i=0;i<200;i++){base=output.match(/http:\/\/127\.0\.0\.1:\d+/)?.[0];if(base)break;await delay(50);}
@@ -68,7 +70,7 @@ test('actual broker admin approval authorizes 30 native sessions and survives ho
  copyFileSync(fileURLToPath(new URL('../package-lock.json',import.meta.url)),join(freshConfig,'package-lock.json'));
  writeFileSync(join(freshConfig,'package.json'),JSON.stringify({dependencies:{'@opencode-ai/plugin':'1.19.4'}}));
  const freshEnv={...env,HOME:freshHome,XDG_CONFIG_HOME:join(freshHome,'config'),XDG_DATA_HOME:join(freshHome,'data'),XDG_CACHE_HOME:join(freshHome,'cache'),XDG_STATE_HOME:join(freshHome,'state')};
- const reopened=spawn(process.env.OPENCODE_BINARY,['serve','--hostname','127.0.0.1','--port','0'],{cwd:project,env:freshEnv,stdio:['ignore','pipe','pipe']});t.after(()=>reopened.kill('SIGKILL'));
+ const reopened=spawn(process.env.OPENCODE_BINARY,['serve','--hostname','127.0.0.1','--port','0'],{cwd:project,env:freshEnv,stdio:['ignore','pipe','pipe']});t.after(()=>stopHost(reopened));
  let again='';reopened.stdout.on('data',x=>again+=x);reopened.stderr.on('data',x=>errors+=x);
  for(let i=0;i<200&&!again.match(/http:\/\/127\.0\.0\.1:\d+/);i++)await delay(50);
  base=again.match(/http:\/\/127\.0\.0\.1:\d+/)?.[0];assert.ok(base,errors);
