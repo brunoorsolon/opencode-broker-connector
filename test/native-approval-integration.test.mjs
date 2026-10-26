@@ -46,12 +46,14 @@ test('actual broker admin approval authorizes 30 native sessions and survives ho
  const syntax=spawnSync(process.execPath,['--check',provider],{encoding:'utf8'});assert.equal(syntax.status,0,syntax.stderr);
  writeFileSync(join(project,'opencode.json'),JSON.stringify({plugin:[pathToFileURL(scopedPlugin).href],provider:{fixture:{npm:pathToFileURL(provider).href,models:{fake:{name:'fake',limit:{context:50000,output:2000}},small:{name:'small',limit:{context:10000,output:1000}}}}},model:'fixture/fake',small_model:'fixture/small',enabled_providers:['fixture'],autoupdate:false,permission:{bash:'deny'}}));
  const env={PATH:process.env.PATH,HOME:home,XDG_CONFIG_HOME:join(home,'config'),XDG_DATA_HOME:join(home,'data'),XDG_CACHE_HOME:join(home,'cache'),XDG_STATE_HOME:join(home,'state'),OPENCODE_DISABLE_MODELS_FETCH:'1'};
+ for(const key of ['HOME','XDG_CONFIG_HOME','XDG_DATA_HOME','XDG_CACHE_HOME','XDG_STATE_HOME','XDG_RUNTIME_DIR'])if(process.env[key]!==undefined)env['PSST_CONTAINER_RUNTIME_'+key]=process.env[key];
  env.PSST_OPENCODE_CONFIG_DIR=installation;env.NODE_EXTRA_CA_CERTS=cert;
  for(const key of ['PSST_CONTAINER_RUNTIME','PSST_CONTAINER_IMAGE','PSST_CONTAINER_REPO','PSST_REAL_OPENCODE_BINARY'])if(process.env[key])env[key]=process.env[key];
  const child=spawn(process.env.OPENCODE_BINARY,['serve','--hostname','127.0.0.1','--port','0'],{cwd:project,env,stdio:['ignore','pipe','pipe']});t.after(()=>stopHost(child));
  let output='',errors='';child.stdout.on('data',x=>output+=x);child.stderr.on('data',x=>errors+=x);
  let base;
  for(let i=0;i<200;i++){base=output.match(/http:\/\/127\.0\.0\.1:\d+/)?.[0];if(base)break;await delay(50);}
+ if(!base)console.error('Native host startup failed:',errors,output);
  assert.ok(base,errors+' '+output);
  async function api(path,body){const res=await fetch(base+path,{method:body===undefined?'GET':'POST',headers:{'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)}),signal:AbortSignal.timeout(10000)});assert.ok(res.ok,await res.clone().text());return res.status===204?null:res.json();}
  const sessions=[];

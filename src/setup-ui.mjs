@@ -65,7 +65,9 @@ export async function installSetupUI(api, { directory = installationDirectory(),
             await select({ directory, connectionFile: result.connectionFile, expectedRevision, signal: controller.signal, pendingFlowId: flowId });
             if (!alive()) return;
             close(); api.ui.dialog.clear();
-            toast('Approved installation saved. New sessions connect automatically; existing sessions retain their authorization. Receive remains cooperative.', 'success');
+            toast(process.env.PSST_CONFIG_FILE
+              ? 'Approved installation saved. The explicit PSST_CONFIG_FILE override still takes precedence; restart without it to use the saved approval. Existing connections are unchanged.'
+              : 'Approved installation saved. New sessions connect automatically; existing sessions retain their authorization. Receive remains cooperative.', 'success');
           }
           if (prior && prior.state !== 'pending' && (prior.state !== 'approved' || selected?.connectionFile === prior.connectionFile)) {
             replace(() => api.ui.DialogConfirm({ title: 'Replace Psst authorization?',

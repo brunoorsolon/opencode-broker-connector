@@ -45,3 +45,7 @@ test('poll returning another request cannot select the wrong approved installati
 test('cancelled approval not yet selected is resumed instead of forcing a new key',async t=>{
  const f=await fixture(t,{helper:{readApprovalState:()=>({state:'approved',requestId:'prior',connectionFile:'/private/candidate.json'}),beginApproval:async opts=>{assert.equal(opts.replaceRequestId,undefined);return {state:'approved',requestId:'prior',connectionFile:'/private/candidate.json'};}}});f.open();await f.dialog().onConfirm('https://broker.example');assert.equal(f.calls.at(-1)[0],'select');assert.equal(f.toasts.at(-1).variant,'success');
 });
+test('explicit legacy override is disclosed rather than claiming a new active connection',async t=>{
+ const old=process.env.PSST_CONFIG_FILE;process.env.PSST_CONFIG_FILE='/private/legacy.json';
+ try {const f=await fixture(t);f.open();await f.dialog().onConfirm('https://broker.example');assert.match(f.toasts.at(-1).message,/override still takes precedence/);}finally{if(old===undefined)delete process.env.PSST_CONFIG_FILE;else process.env.PSST_CONFIG_FILE=old;}
+});

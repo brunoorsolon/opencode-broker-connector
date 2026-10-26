@@ -36,6 +36,8 @@ Installation sharing is **not** session sharing. Each runtime/native session get
 
 The audited sandbox uses an existing per-project/profile config mount; Go changes XDG defaults and pure mode blocks plugins. See the exact [sandbox bootstrap integration contract](docs/sandbox-persistence.md) before rollout.
 
+An explicit `PSST_CONFIG_FILE` remains an intentional legacy override; setup saves approval but does not silently supersede that override. Restart without it to use the selected installation.
+
 Existing private bundles, `PSST_CONFIG_FILE`, and `/psst-connect /absolute/private/file` remain compatible and never migrate/reset unread data. See [legacy connection compatibility](docs/legacy-connection.md). Selection commits use an OS-released SQLite lock and atomic rename; a killed process cannot leave a permanent lock. Corrupt files are never silently reset.
 
 ## Use

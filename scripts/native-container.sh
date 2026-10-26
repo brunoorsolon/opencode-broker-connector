@@ -8,8 +8,21 @@ binary=${PSST_REAL_OPENCODE_BINARY:?Set the integrity-verified official fixture 
 # Native tests put their home, code/provider fixture and private installation under one disposable root.
 case "$HOME" in /tmp/psst-native-https-*/home|/tmp/psst-native-https-*/fresh-home) ;; *) echo 'fixture_home_required' >&2; exit 2;; esac
 fixture=${HOME%/*}
+# Native HOME/XDG values belong to the application, never Podman's rootless storage.
+# Preserve the runner's engine identity; otherwise Podman creates subordinate-owned
+# storage inside the disposable native HOME and recreates its engine on restart.
+engine() {
+  local key saved
+  # env options must precede assignments.
+  local unset_opts=() values=()
+  for key in HOME XDG_CONFIG_HOME XDG_DATA_HOME XDG_CACHE_HOME XDG_STATE_HOME XDG_RUNTIME_DIR; do
+    saved="PSST_CONTAINER_RUNTIME_$key"
+    if [[ -v "$saved" ]]; then values+=("$key=${!saved}"); else unset_opts+=(-u "$key"); fi
+  done
+  env "${unset_opts[@]}" "${values[@]}" "$runtime" "$@"
+}
 name="psst-opencode-test-${PPID}-$$"
-cleanup() { "$runtime" rm -f "$name" >/dev/null 2>&1 || true; }
+cleanup() { engine rm -f "$name" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 trap 'cleanup; exit 143' TERM INT
 args=(run --rm --init --name "$name" --label psst-native-approval-fixture=true --network host --user "$(id -u):$(id -g)"
@@ -25,5 +38,5 @@ if [[ -n "${NODE_EXTRA_CA_CERTS:-}" ]]; then
   args+=(--mount "type=bind,src=$ca_dir,dst=$ca_dir,readonly" -e "NODE_EXTRA_CA_CERTS=$NODE_EXTRA_CA_CERTS")
 fi
 # Container-local /tmp is never shared; runtime hints cannot cross host incarnations.
-"$runtime" "${args[@]}" "$image" "$binary" "$@" &
+engine "${args[@]}" "$image" "$binary" "$@" &
 wait $!
