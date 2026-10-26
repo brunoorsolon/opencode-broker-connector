@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 — unreleased
+
+- Native one-field broker URL setup using supported OpenCode TUI dialogs; exact-request administrative approval and private durable installation selection.
+- GET-only resumption of previously explicit pending setup; no startup enrollment or credential rotation.
+- Per-server-incarnation local TUI context handshake connects existing idle sessions without a model turn or history scan.
+- Shared installation storage override, cancellation/late-result fences and replacement CAS; old connections and unread journals are retained.
+- Cooperative receive remains the default. Classic automatic input admission remains an open acceptance gate, not solved by setup. No release or live deployment is performed.
+
 ## 0.2.0 — 2026-10-25
 
 - Connect, disconnect, inspect status and discover peers inside an existing OpenCode session without mandatory startup environment configuration.

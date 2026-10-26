@@ -54,5 +54,17 @@ test('official 1.19.4 v2 admission cannot be assumed to share classic CLI conver
  const context=await api('/api/session/'+session.id+'/context');
  const history=await api('/api/session/'+session.id+'/history');
  assert.equal(modern.data.agent,'plan');assert.ok(legacy.length>=2);assert.deepEqual(context.data,[]);assert.deepEqual(history.data,[]);
+ // Fresh admission regression: a human edit wins AFTER the adapter observes idle/selection.
+ const snapshot=await api('/session/'+session.id);
+ assert.equal(snapshot.agent,'plan');
+ await api('/session/'+session.id+'/message',{agent:'build',model:{providerID:'fixture',modelID:'small'},noReply:true,parts:[{type:'text',text:'human changed selection after idle observation'}]});
+ const human=await api('/session/'+session.id);assert.equal(human.agent,'build');assert.equal(human.model.id,'small');
+ await api('/session/'+session.id+'/prompt_async',{agent:snapshot.agent,model:{providerID:snapshot.model.providerID,modelID:snapshot.model.id},noReply:true,parts:[{type:'text',synthetic:true,text:'untrusted fixture peer with stale snapshot; not human approval'}]});
+ let raced;
+ for(let i=0;i<100;i++){raced=await api('/session/'+session.id);if(raced.agent==='plan')break;await delay(20);}
+ assert.equal(raced.agent,'plan','classic async admission overwrites newer human selection, rather than rejecting stale snapshot');
+ assert.equal(raced.model.id,'fake');
+ await api('/session/'+session.id+'/message',{noReply:true,parts:[{type:'text',synthetic:true,text:'omitting agent does not preserve session agent'}]});
+ assert.equal((await api('/session/'+session.id)).agent,'build','omitting agent chooses default, not current Plan');
  // Never submit to the separate v2 engine: it does not contain this CLI conversation.
 });

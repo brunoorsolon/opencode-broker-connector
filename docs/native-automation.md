@@ -26,3 +26,70 @@ Request a public plugin/SDK operation for durable, idempotent queued input into 
 5. Lifecycle fencing across deletion, revert and compaction, plus documentation of whether admission proves persistence, model input delivery or neither.
 
 This could be a compatibility bridge to the new durable queue only if it preserves the actual existing CLI history, policy and runner. Until supported and verified, default cooperative delivery is the honest production behavior.
+
+## Fresh admission investigation for URL-only setup (2026-10-26)
+
+The pinned official CLI regression `test/native-v2-compat.test.mjs` now reproduces
+an actual stale-selection race: read Plan/model A; submit a human message changing
+to Build/model B; call classic `prompt_async` with the previously observed
+Plan/model A. The native session switches back to Plan/model A rather than rejecting
+the stale request. Omitting `agent` instead chooses the default Build agent, not
+the existing Plan selection. Both checks execute in the real 1.19.4 host against
+a synthetic local provider, without a production account.
+
+Fresh source inspection at `v1.19.4` confirms:
+
+- `session/prompt.ts:635–690`: `createUserMessage` resolves the default agent when
+  omitted and calls `sessions.setAgentModel` before admission arbitration.
+- `session/prompt.ts:1046–1072`: message/parts are persisted and revert cleanup
+  occurs before the model loop. `noReply` only skips that loop, not these mutations.
+- `effect/runner.ts:120–146`: `ensureRunning` serializes/joins model execution;
+  it does not reject a stale prompt before session/selection mutation.
+- `server/routes/instance/httpapi/handlers/session.ts:295–327`: synchronous and
+  asynchronous routes invoke the same prompt implementation; async forks and
+  returns before receipt proof. Busy rejection elsewhere applies to shell work,
+  not an atomic selection-preserving prompt queue.
+- Supported TUI APIs expose prompt set/reset/submit and command dispatch, not a
+  durable idempotent peer-input queue with a selection revision. Using those
+  methods for delivery would alter the user's draft or invoke the same unsafe
+  admission path. They are not used for peer delivery.
+
+Accordingly automatic idle model receive is **still blocked by the supported
+classic host API**, not enabled by the approval feature or the identity handshake.
+The separate v2 engine still lacks this classic conversation's history. Neither a
+successful setup nor a TLS/PTY fixture closes this acceptance gate.
+
+## Local idle identity attachment
+
+The server publishes a random, nonsecret per-plugin-incarnation context marker in
+its existing `psst-status` command template through the supported config hook. The
+TUI reads `api.state.config` and `api.route.current`, then emits a short-lived
+owner-private hint under the container's temporary directory. The server reads
+only its own incarnation directory, verifies the exact native session and project
+through `session.get`, and binds a separate broker inbox. Hints expire after five
+seconds, route changes retire hint-owned bindings, and disposal removes them.
+This is installation-independent local IPC, not enrollment authority, a native
+history scan, model command, input injection, or a substitute for atomic delivery.
+Remote TUI/server filesystems cannot use this handshake.
+
+### New interactive sessions do not offer a supported v2-engine switch
+
+The bounded follow-up also inspected **new** interactive sessions, not only
+existing-history compatibility. In pinned 1.19.4, the official
+[TUI submit path](https://github.com/anomalyco/opencode/blob/v1.19.4/packages/tui/src/component/prompt/index.tsx#L990-L1120)
+creates new conversations with `sdk.client.session.create` and sends normal input
+with `sdk.client.session.prompt`. Its
+[generated SDK](https://github.com/anomalyco/opencode/blob/v1.19.4/packages/sdk/js/src/v2/gen/sdk.gen.ts#L3399-L3786)
+maps those calls to classic `/session` and `/session/{sessionID}/message`.
+The `@opencode-ai/sdk/v2` import is the SDK generation, **not** selection of the
+separate v2 conversation engine.
+
+Inspection of the pinned
+[flags](https://github.com/anomalyco/opencode/blob/v1.19.4/packages/core/src/flag/flag.ts),
+[TUI configuration](https://github.com/anomalyco/opencode/blob/v1.19.4/packages/tui/src/config/index.tsx),
+and TUI worker found no supported option to route a new interactive session to
+that separate engine. Consequently this connector does not create v2-only
+conversations, migrate history, patch the host, or enable an unsupported
+experiment to bypass classic admission. A future supported host capability
+requires its own real interactive admission/race test before automatic delivery
+can be enabled.

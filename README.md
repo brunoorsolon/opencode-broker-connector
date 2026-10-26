@@ -2,83 +2,47 @@
 
 Native session-scoped messaging tools for [OpenCode](https://opencode.ai/docs/plugins/) and the [Psst broker](https://github.com/matuto-ai/psst). Runs **inside your existing OpenCode sandbox**. No host launcher, extra model, broker source checkout, permission override, or replacement of your existing plugins is required.
 
-## Install now, before npm publication
+## Install, configure, use
 
-Install the reviewed source from `main`:
+This change prepares **0.3.0**, not a published release. After that version is published, install both native targets once:
 
 ```sh
-git clone --branch main https://github.com/matuto-ai/opencode-broker-connector.git
-cd opencode-broker-connector
-npm ci --ignore-scripts
+opencode plugin @matuto-ai/opencode-broker-connector@0.3.0 --global
 ```
 
-Add the absolute plugin file URL to the existing `plugin` array in your sandbox's OpenCode config. Preserve all existing settings and entries:
+OpenCode detects the separate server and TUI entrypoints and preserves existing plugin settings. Before publication, install the reviewed source with `npm ci --ignore-scripts`, add `file:///absolute/path/plugin/index.mjs` to your existing `opencode.json` plugin array and `file:///absolute/path/plugin/tui.mjs` to your existing `tui.json` plugin array. Do not replace other configuration entries.
 
-```json
-{
-  "plugin": ["file:///absolute/path/opencode-broker-connector/plugin/index.mjs"]
-}
-```
+1. Press **Ctrl+Alt+P** in the native TUI (Psst setup; also registered as `/psst-setup`). Its single text field asks for **only the HTTPS broker URL**.
+2. Approve the pending OpenCode request in the broker's administration page.
+3. The approved installation is saved privately. Existing/new native sessions connect without repeating enrollment. Use `/psst-status` and the broker tools below.
 
-Restart OpenCode normally after installing the plugin. No initial environment variable or broker connection is required: it starts disconnected. In your existing native CLI session, use:
+No pairing secret, ticket, credential copy, model tool, or operator script is needed. Knowing the URL grants no messaging access. TLS verification remains enabled; private certificate authorities belong in the native runtime's system trust (`NODE_EXTRA_CA_CERTS`), not a secret field.
 
-```text
-/psst-connect /absolute/private/path/opencode/connection.json
-/psst-status
-/psst-peers
-/psst-disconnect
-```
+**Receiving remains cooperative, not automatic model wake-up.** URL-only setup does not fix classic OpenCode's atomic input-admission limitation. [Native acceptance and remaining gate](docs/native-automation.md).
 
-The connect argument is **only a private connection-file path**, never a token, inline JSON, or password. Native command arguments may be recorded in OpenCode history/events. Each connect affects only the current session. Disconnect stops its broker polling and closes its lease without stopping OpenCode. Disconnect before switching connections. The commands use native OpenCode command hooks and return a short local status for the normal model turn; they do not replace the TUI or bypass permissions.
+## Persistent installation and disposable containers
 
-For backward compatibility, setting `PSST_CONFIG_FILE` to a private connection file before launch still enables lazy cooperative registration in each session. Explicit disconnect also disables that session's automatic re-registration. Neither path automatically resumes a previous process's broker identity.
+Persist the complete owner-private installation directory, in precedence order:
 
-The config and token must be owner-only files (`0600`), readable by the sandbox user. The adjacent `state` directory is created with mode `0700`; persist it in your existing sandbox data volume if you want to retain delivery journals. Do not place credentials in a repository or pass token contents as command arguments.
+- `PSST_OPENCODE_CONFIG_DIR` (absolute override; recommended for sandbox bootstrap).
+- `$OPENCODE_CONFIG_DIR/psst` when the native config override is set.
+- `$XDG_CONFIG_HOME/opencode/psst`, or `~/.config/opencode/psst` by default.
 
-The standard Psst enrollment bundle (`format: "broker-client-bundle-v1"`, `allowed_client_types: ["opencode"]`) is accepted directly. It uses a sibling file named `token`. Alternatively, an owner-only JSON config can contain:
+Use an owner-only `0700` directory, files `0600`, and the same sandbox UID. Mount it at the **same absolute path** in recreated containers. `installation.json` is a versioned, nonsecret approved-bundle pointer; `pending.json` records the nonsecret explicit setup attempt and cancellation state. `approvals/` holds durable candidate keys, approved bundles and receipts, and per-session inbox journals. JSON credentials are protected by private file permissions, not by pretending an adjacent file is inherently safer. Do not put this directory in a repository.
 
-```json
-{
-  "broker": {
-    "url": "https://broker.example.invalid/",
-    "tokenFile": "/absolute/private/path/token"
-  },
-  "stateDirectory": "/absolute/private/path/opencode-state",
-  "name": "OpenCode"
-}
-```
+Ordinary startup never submits enrollment, generates a key or rotates authorization. It loads the approved pointer and may **GET-only** resume a saved, previously explicit pending request. Closing the setup dialog pauses that request locally; closing OpenCode leaves an outstanding request resumable on reopen. Transient failures keep the same candidate. Denied/expired/revoked requests stop; an explicit setup rerun asks before requesting a replacement. The old working selection remains until exact approval and atomic selection commit. Existing sessions retain their old connection and unread journal; new sessions use the replacement. No implicit broker revocation occurs.
 
-Optional `broker.caFile` points to a trusted private CA; public certificates normally need no extra setting. TLS verification is never disabled. A successful `/healthz` call is not enrollment: the broker must authorize the token for client type `opencode` and a scope shared with the intended peer.
+Installation sharing is **not** session sharing. Each runtime/native session gets a separate random address and private journal. Restarted sessions do not replay old unread messages into a new address; existing journals are retained for explicit recovery. Never share the ephemeral `/tmp/psst-opencode-<uid>/` runtime hints across containers. These contain only the supported TUI route, exact project and random server-incarnation marker; the server verifies the native session before attaching. The local TUI and server must share their ordinary container filesystem. Remote TUI/server topology is not yet supported for idle attachment.
 
-## Explicit per-session pairing
+The audited sandbox uses an existing per-project/profile config mount; Go changes XDG defaults and pure mode blocks plugins. See the exact [sandbox bootstrap integration contract](docs/sandbox-persistence.md) before rollout.
 
-After the broker enrollment upgrade is reviewed and deployed, follow its [operator pairing guide](https://github.com/matuto-ai/psst/blob/3e908e79966d886a02d372c103e31dec6e900c1a/docs/pairing-operator.md). An operator first authorizes a short-lived, client-type/scope-bound pairing grant on the broker and writes its private `psst-pairing-v1` file. Place that file inside the existing sandbox (owner-only `0600`), then run:
+An explicit `PSST_CONFIG_FILE` remains an intentional legacy override; setup saves approval but does not silently supersede that override. Restart without it to use the selected installation.
 
-```text
-/psst-connect /absolute/private/path/opencode-pairing.json
-```
-
-The plugin generates and durably saves its own random credential before issuance, sends only the credential hash over verified HTTPS, and stores the issued credential and token-bound receipt privately. Neither pairing secret nor bearer token enters command arguments, chat, model input, URLs or logs. The helper uses system TLS trust; it does not disable certificate verification or accept a pairing-file CA override.
-
-The private installation directory is `$XDG_STATE_HOME/psst/opencode/<project-and-session-hash>` (default `~/.local/state/psst/opencode/...`). Preserve it inside the sandbox to safely retry a lost enrollment response with the **same file and native session**. A different native session needs its own operator pairing grant; a redeemed grant cannot be reused to create another key. No control-plane UI or public signup service is installed.
-
-`/psst-status` reports only a nonsecret credential ID and expiry. Expired or rejected credentials stop messaging and require explicit re-pairing; no silent credential replacement occurs. Disconnect before changing a live connection. Re-pairing always creates a fresh local broker identity/inbox and never imports another principal's pending messages.
-
-New helper bundles carry `enrollment_receipt_file: "enrollment.json"`; that exact sibling receipt is mandatory and checked against the private token hash, broker and client type. Missing or corrupt receipt is a hard error, not a legacy fallback. Unmarked legacy bundles still work unchanged. The optional legacy environment mode may read an existing bundle but never performs enrollment automatically.
-
-## After npm publication
-
-The package is prepared as `@matuto-ai/opencode-broker-connector`. **A prepared package/workflow does not mean it has been published.** Once version `0.2.0` exists on npm, use this native OpenCode configuration instead of the local file:
-
-```json
-{"plugin": ["@matuto-ai/opencode-broker-connector@0.2.0"]}
-```
-
-OpenCode installs npm plugins automatically using Bun. Use the same native connect command (or optional legacy `PSST_CONFIG_FILE`); remove the duplicate local entry so the plugin does not load twice. See [publication](docs/publishing.md).
+Existing private bundles, `PSST_CONFIG_FILE`, and `/psst-connect /absolute/private/file` remain compatible and never migrate/reset unread data. See [legacy connection compatibility](docs/legacy-connection.md). Selection commits use an OS-released SQLite lock and atomic rename; a killed process cannot leave a permanent lock. Corrupt files are never silently reset.
 
 ## Use
 
-After `/psst-connect`, the current session is registered in cooperative mode. General automatic delivery remains off: the current classic native API cannot atomically preserve a concurrently changed agent/model selection. In the optional legacy environment-variable mode, a user message or broker tool initializes registration lazily. No separate wrapper is needed:
+After approval, the current local TUI session is registered in cooperative mode. General automatic delivery remains off: the current classic native API cannot atomically preserve a concurrently changed agent/model selection. In the optional legacy environment-variable mode, a user message or broker tool initializes registration lazily. No separate wrapper is needed:
 
 1. `broker_list_clients` discovers exact authorized peer IDs. Names are descriptive only.
 2. `broker_send` sends to a selected `recipient_id`. Preserve its `send_key` when retrying an uncertain send.
