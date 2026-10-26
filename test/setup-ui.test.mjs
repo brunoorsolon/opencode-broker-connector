@@ -49,3 +49,8 @@ test('explicit legacy override is disclosed rather than claiming a new active co
  const old=process.env.PSST_CONFIG_FILE;process.env.PSST_CONFIG_FILE='/private/legacy.json';
  try {const f=await fixture(t);f.open();await f.dialog().onConfirm('https://broker.example');assert.match(f.toasts.at(-1).message,/override still takes precedence/);}finally{if(old===undefined)delete process.env.PSST_CONFIG_FILE;else process.env.PSST_CONFIG_FILE=old;}
 });
+
+test('pending native dialog displays exact request ID and broker approval page before polling',async t=>{
+ let f;f=await fixture(t,{pause:async()=>{assert.match(f.dialog().message,/Request ID: request/);assert.match(f.dialog().message,/https:\/\/broker\.example\/admin/);}});
+ f.open();await f.dialog().onConfirm('https://broker.example');
+});

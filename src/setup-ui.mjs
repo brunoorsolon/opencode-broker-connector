@@ -40,7 +40,7 @@ export async function installSetupUI(api, { directory = installationDirectory(),
             pending = savePending({ directory, brokerUrl: brokerUrl.href, expectedRevision, requestId: replaceRequestId ? null : prior?.requestId ?? null });
             const flowId = pending.flowId;
             replace(() => api.ui.DialogAlert({ title: 'Psst approval pending',
-              message: 'Approve this OpenCode request in the broker administration page. Close to pause; setup resumes the same request.',
+              message: 'Preparing the durable request. Close to pause; setup resumes the same request.',
               onConfirm: close }));
             async function retry(operation) {
               while (alive()) {
@@ -52,7 +52,15 @@ export async function installSetupUI(api, { directory = installationDirectory(),
             let result = await retry(() => helper.beginApproval({ ...options, ...(replaceRequestId ? { replaceRequestId } : {}) }));
             const requestId = result.requestId;
             if (!replaceRequestId && prior?.state === 'pending' && requestId !== prior.requestId) throw new Error('psst_request_changed');
-            if (alive()) updatePending({ directory, flowId, requestId });
+            if (alive()) {
+              updatePending({ directory, flowId, requestId });
+              if (result.state === 'pending') replace(() => api.ui.DialogAlert({
+                title: 'Psst approval pending',
+                message: `Open ${new URL('/admin', brokerUrl).href}
+Request ID: ${requestId}
+Approve only the matching OpenCode request. Close to pause; setup resumes this same request.`,
+                onConfirm: close }));
+            }
             while (alive() && result.state === 'pending') {
               await pause(controller.signal);
               if (alive()) {

@@ -34,7 +34,7 @@ test('actual native TUI URL form, admin approval and existing-idle session attac
  const opts={brokerUrl:authority.brokerUrl,directory:join(config,'psst'),clientType:'opencode'};
  let request;
  for(let i=0;i<100;i++){request=await authority.helper('readApprovalState',opts);if(request)break;await delay(50);}
- assert.equal(request.state,'pending');await authority.decide(request.requestId);
+ assert.equal(request.state,'pending');await waitFor(request.requestId);await waitFor(authority.brokerUrl+'/admin');await authority.decide(request.requestId);
  for(let i=0;i<150&&!existsSync(join(config,'psst','installation.json'));i++)await delay(100);
  assert.ok(existsSync(join(config,'psst','installation.json')),'native UI commits only approved private installation');
  let rows=[];
