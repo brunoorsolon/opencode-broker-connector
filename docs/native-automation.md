@@ -71,3 +71,25 @@ seconds, route changes retire hint-owned bindings, and disposal removes them.
 This is installation-independent local IPC, not enrollment authority, a native
 history scan, model command, input injection, or a substitute for atomic delivery.
 Remote TUI/server filesystems cannot use this handshake.
+
+### New interactive sessions do not offer a supported v2-engine switch
+
+The bounded follow-up also inspected **new** interactive sessions, not only
+existing-history compatibility. In pinned 1.19.4, the official
+[TUI submit path](https://github.com/anomalyco/opencode/blob/v1.19.4/packages/tui/src/component/prompt/index.tsx#L990-L1120)
+creates new conversations with `sdk.client.session.create` and sends normal input
+with `sdk.client.session.prompt`. Its
+[generated SDK](https://github.com/anomalyco/opencode/blob/v1.19.4/packages/sdk/js/src/v2/gen/sdk.gen.ts#L3399-L3786)
+maps those calls to classic `/session` and `/session/{sessionID}/message`.
+The `@opencode-ai/sdk/v2` import is the SDK generation, **not** selection of the
+separate v2 conversation engine.
+
+Inspection of the pinned
+[flags](https://github.com/anomalyco/opencode/blob/v1.19.4/packages/core/src/flag/flag.ts),
+[TUI configuration](https://github.com/anomalyco/opencode/blob/v1.19.4/packages/tui/src/config/index.tsx),
+and TUI worker found no supported option to route a new interactive session to
+that separate engine. Consequently this connector does not create v2-only
+conversations, migrate history, patch the host, or enable an unsupported
+experiment to bypass classic admission. A future supported host capability
+requires its own real interactive admission/race test before automatic delivery
+can be enabled.
