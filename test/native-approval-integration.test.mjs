@@ -11,7 +11,16 @@ import { fixture } from './broker-fixture/test/helpers.mjs';
 import { createBrokerServer } from './broker-fixture/src/server.mjs';
 import { loadBrokerReference } from '../src/reference.mjs';
 const ref=await loadBrokerReference();
-async function stopHost(child){if(child.exitCode!==null||child.signalCode!==null)return;const closed=new Promise(resolve=>child.once('close',resolve));child.kill('SIGTERM');await Promise.race([closed,delay(10000,undefined,{ref:false})]);if(child.exitCode===null&&child.signalCode===null)child.kill('SIGKILL');}
+async function stopHost(child){
+ // Rootless conmon can inherit the runtime pipe after the wrapper has exited.
+ // Wait for the wrapper's cleanup/exit, then close our diagnostic streams.
+ if(child.exitCode===null&&child.signalCode===null){
+  const exited=new Promise(resolve=>child.once('exit',resolve));child.kill('SIGTERM');
+  await Promise.race([exited,delay(10000,undefined,{ref:false})]);
+  if(child.exitCode===null&&child.signalCode===null){child.kill('SIGKILL');await exited;}
+ }
+ child.stdout?.destroy();child.stderr?.destroy();
+}
 
 test('actual broker admin approval authorizes 30 native sessions and survives host restart without enrollment', {skip:!process.env.OPENCODE_BINARY || !process.env.PSST_APPROVAL_BROKER_DIR,timeout:60000},async t=>{
  const dir=mkdtempSync(join(tmpdir(),'psst-native-https-'));t.after(()=>rmSync(dir,{recursive:true,force:true}));
@@ -66,7 +75,7 @@ test('actual broker admin approval authorizes 30 native sessions and survives ho
  assert.equal(readFileSync(token,'utf8'),originalToken,'startup does not rotate installation authorization');
  assert.deepEqual(Object.keys(JSON.parse(readFileSync(join(installation,'installation.json'),'utf8'))).sort(),['connectionFile','format','revision']);
  // Persisted installation alone is sufficient in a fresh server process; no native mailbox is reused.
- child.kill('SIGTERM');await new Promise(resolve=>child.once('exit',resolve));
+ await stopHost(child);
  const freshHome=join(dir,'fresh-home'),freshConfig=join(freshHome,'config','opencode');mkdirSync(freshConfig,{recursive:true});
  symlinkSync(fileURLToPath(new URL('../node_modules',import.meta.url)),join(freshConfig,'node_modules'));
  copyFileSync(fileURLToPath(new URL('../package-lock.json',import.meta.url)),join(freshConfig,'package-lock.json'));
