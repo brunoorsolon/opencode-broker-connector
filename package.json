@@ -1,6 +1,6 @@
 {
   "name": "@matuto-ai/opencode-broker-connector",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "engines": {
     "node": ">=24.19.0 <25"
@@ -16,7 +16,11 @@
   },
   "description": "Session-scoped Psst messaging plugin for OpenCode",
   "main": "./plugin/index.mjs",
-  "exports": "./plugin/index.mjs",
+  "exports": {
+    ".": "./plugin/index.mjs",
+    "./server": "./plugin/index.mjs",
+    "./tui": "./plugin/tui.mjs"
+  },
   "files": [
     "plugin",
     "src",

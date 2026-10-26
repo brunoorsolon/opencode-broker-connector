@@ -5,15 +5,33 @@ import { createHash } from 'node:crypto';
 import { createOpenCodeAdapter, nativeShape } from './opencode-adapter.mjs';
 import { privateDirectory, readConfig } from './config.mjs';
 import { createNativeDelivery, nativeSelection } from './native-delivery.mjs';
+import { contextMarker } from './native-context.mjs';
 
 const validId = value => typeof value === 'string' && /^[a-zA-Z0-9_.:-]{1,256}$/.test(value);
 /** Native, session-keyed cooperative tools. Does not attach to or control a TUI. */
 export async function createNativePlugin({ native, tool, reference, config, clientFactory, experimentalNativeDelivery = false, connectFile = async path => readConfig(path),
-  adapterFactory = createOpenCodeAdapter }) {
+  loadInstallation = async () => undefined, contextReceiver, onDispose, adapterFactory = createOpenCodeAdapter }) {
   const directory = realpathSync(native.directory), worktree = realpathSync(native.worktree);
   const sessions = new Map();
   const connections = new Map(), disconnected = new Set(), connectionErrors = new Map();
   const connecting = new Map();
+  const hinted = new Set();
+  let contextBusy = false;
+  const contextTimer = contextReceiver ? setInterval(async () => {
+    if (disposed || contextBusy) return;
+    contextBusy = true;
+    try {
+      const active = contextReceiver.read();
+      for (const id of hinted) if (!active.has(id)) { hinted.delete(id); await close(id); }
+      await Promise.all([...active].map(async id => {
+        if (disposed || disconnected.has(id)) return;
+        if (!sessions.has(id)) hinted.add(id);
+        await getSession(id).catch(() => {});
+      }));
+    } catch { /* Missing/stale native hints must not affect ordinary host input. */ }
+    finally { contextBusy = false; }
+  }, 1000) : null;
+  contextTimer?.unref?.();
   let disposed = false;
   async function sessionInfo(id, signal) {
     if (!validId(id)) throw new reference.LocalError('session_mismatch');
@@ -48,10 +66,13 @@ export async function createNativePlugin({ native, tool, reference, config, clie
     if (disposed || !validId(id)) throw new reference.LocalError('session_mismatch');
     const connection = connections.get(id);
     if (!connection && connecting.has(id)) throw new reference.LocalError('owner_conflict');
-    const settings = connection?.config ?? (disconnected.has(id) ? null : config);
-    if (!settings) throw new reference.LocalError('invalid_configuration', { field: 'connect_required' });
     let state = sessions.get(id);
     if (state?.closing) { await state.closing; state = undefined; }
+    if (state) { await state.starting; return state; }
+    const settings = connection?.config ?? (disconnected.has(id) ? null : config ?? await loadInstallation());
+    if (disposed || connections.get(id) !== connection) throw new reference.LocalError('session_mismatch');
+    if (!settings || disconnected.has(id)) throw new reference.LocalError('invalid_configuration', { field: 'connect_required' });
+    state = sessions.get(id);
     if (state) { await state.starting; return state; }
     if (sessions.size >= 64) throw new reference.LocalError('owner_conflict');
     state = { controller: new AbortController(), lifetime: Symbol('opencode plugin session'), adapter: null,
@@ -119,6 +140,7 @@ export async function createNativePlugin({ native, tool, reference, config, clie
   async function dispose() {
     if (disposed) return;
     disposed = true; connecting.clear();
+    clearInterval(contextTimer); contextReceiver?.close(); onDispose?.();
     await Promise.all([...sessions.keys()].map(close));
   }
   return {
@@ -133,6 +155,7 @@ export async function createNativePlugin({ native, tool, reference, config, clie
       })) {
         if (value.command[name]) throw new Error('psst_command_conflict');
         value.command[name] = { description, template: 'Psst local connection command. Report only the local result below.' };
+        if (name === 'psst-status' && contextReceiver) value.command[name].template += ' ' + contextMarker(contextReceiver.id);
       }
     },
     async 'command.execute.before'(input, output) {
@@ -183,6 +206,10 @@ export async function createNativePlugin({ native, tool, reference, config, clie
     },
     async event({ event }) {
       for (const state of sessions.values()) state.delivery?.event(event);
+      if (event.type === 'session.created') {
+        const id = event.properties?.info?.id;
+        if (validId(id)) void getSession(id).catch(() => {});
+      }
       if (event.type === 'session.deleted') { const id = event.properties?.info?.id; connecting.delete(id); disconnected.add(id); connections.delete(id); await close(id); }
       if (event.type === 'server.instance.disposed') await dispose();
     },

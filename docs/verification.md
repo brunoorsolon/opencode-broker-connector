@@ -124,3 +124,49 @@ The second actual-host regression loads the npm-packed production plugin into of
 A further actual OpenCode smoke loads the packed plugin, passes only a private pairing-file path to the native command, and exercises the unmodified shared enrollment helper over system-trusted HTTPS. A synthetic endpoint implementing the frozen broker contract records a hash-only credential and authorizes it in the real transport fixture; automatic peer messages then reach the deterministic local model. This checks native/helper/credential integration, not the production broker's operator issuance implementation (covered by upstream broker tests). Unit tests additionally cover marked bundle receipt deletion/type/origin/token mismatches, private permissions, per-native-session attempt separation, expiry shutdown, revoked authorization shutdown and no late connect after disconnect.
 
 The default connector remains cooperative. Additional pinned-host coverage proves that the official v2 session identity is visible while its context/history remain empty for a classic CLI conversation with real messages. The connector does not mix these engines. Unknown agent/model state blocks the experiment and observed changes disconnect it. No test establishes atomic admission against simultaneous external native selection edits.
+
+## URL-only approval and persistent native configuration (0.3.0 candidate)
+
+The new gates use official **OpenCode 1.19.4**, not a mocked host API:
+
+- `native-tui.test.mjs`: loads the production TUI entrypoint and sends real PTY
+  keyboard input through the supported Ctrl+Alt+P setup binding. Invalid URLs
+  remain unselected; the single-field URL form durably saves its request before
+  attempted HTTPS transport. This is a disposable test terminal, not a user's TUI.
+- `native-tui-approval.test.mjs`: loads the production TUI and server entrypoints;
+  a transparent fixture creates/navigates to an empty existing classic session
+  using the supported SDK. Real keyboard setup requests actual broker enrollment;
+  authenticated admin form/CSRF approval commits config; the private native-context
+  hint connects that already-idle session. Its native message history remains
+  empty, proving setup/attachment did not manufacture a model turn.
+- `native-approval-integration.test.mjs`: real broker approval, 30 distinct native
+  sessions in the packed production plugin, process restart with unchanged
+  installation authorization and new session addresses, then real admin revocation.
+- `native-installation.test.mjs`: preserves legacy installation compatibility
+  across the same native 30-session/restart path.
+- `installation.test.mjs`, `setup-ui.test.mjs`, and `native-context.test.mjs` cover
+  selection CAS, cancellation/late results, exact request binding, replacement,
+  transient backoff, GET-only startup resume, terminal denial/revocation/expiry,
+  corrupt/private files, distinct container runtime roots, stale incarnation/owner
+  hints and route changes. These unit fixtures are not real container orchestration.
+
+CI checks out the immutable broker dependency specified in `.github/workflows/ci.yml`
+and supplies `PSST_APPROVAL_BROKER_DIR`; without it the real-broker native gates
+explicitly skip. Locally point that variable at that exact reviewed broker tree.
+No provider credentials, live broker, real user installation or release is used.
+The helper hash/source anchor is recorded in `vendor/enrollment/ORIGIN.md`.
+
+**Not established by these gates:** paid/authenticated model provider behavior,
+classic atomic automatic model receive (the fresh native regression demonstrates
+why it is unsafe), or unchanged historical sandbox pure-mode policy permitting
+plugins. Native process recreation is not itself Docker/Podman mount evidence;
+real orchestration gates are reported separately rather than inferred from unit
+fixtures. See `docs/sandbox-persistence.md` for the exact audited bootstrap boundary.
+
+The separate `native-containers` CI matrix runs the approved 30-session/revocation
+native test with each official OpenCode server inside a fresh Docker or rootless
+Podman container, using the pinned Node image and integrity-checked official CLI.
+On recreation the test uses a new HOME/data/cache/state; only the private selected
+installation plus read-only installed code/bootstrap fixtures remain available.
+The runtime `/tmp` hints are not mounted. A submitted workflow is not a pass:
+the exact PR head's Docker and Podman jobs are the authoritative execution evidence.
