@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { TerminalScreen } from './terminal-screen.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync,mkdirSync,writeFileSync,rmSync,symlinkSync,copyFileSync,existsSync,readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -20,10 +21,10 @@ test('actual native TUI URL form, admin approval and existing-idle session attac
  writeFileSync(join(project,'opencode.json'),JSON.stringify({plugin:[new URL('../plugin/index.mjs',import.meta.url).href],autoupdate:false,enabled_providers:[],permission:{bash:'deny'}}));
  const child=spawn('python3',[fileURLToPath(new URL('./tui-fixture.py',import.meta.url)),process.env.OPENCODE_BINARY],{cwd:project,env:{PATH:process.env.PATH,NODE_EXTRA_CA_CERTS:authority.certFile,HOME:home,TERM:'xterm-256color',XDG_CONFIG_HOME:join(home,'config'),XDG_DATA_HOME:join(home,'data'),XDG_CACHE_HOME:join(home,'cache'),XDG_STATE_HOME:join(home,'state'),OPENCODE_DISABLE_MODELS_FETCH:'1'},stdio:['pipe','pipe','pipe']});
  t.after(()=>{child.stdin.write(JSON.stringify({stop:true})+'\n');child.stdin.end();});
- let buffer='',output='',errors='';child.stderr.on('data',x=>errors+=x);child.stdout.on('data',x=>{buffer+=x;let end;while((end=buffer.indexOf('\n'))>=0){const row=JSON.parse(buffer.slice(0,end));buffer=buffer.slice(end+1);output+=Buffer.from(row.output,'base64').toString();}});
+ const terminal=new TerminalScreen();let buffer='',output='',errors='';child.stderr.on('data',x=>errors+=x);child.stdout.on('data',x=>{buffer+=x;let end;while((end=buffer.indexOf('\n'))>=0){const row=JSON.parse(buffer.slice(0,end));buffer=buffer.slice(end+1);const chunk=Buffer.from(row.output,'base64').toString();output+=chunk;terminal.write(chunk);}});
  const send=text=>child.stdin.write(JSON.stringify({input:Buffer.from(text).toString('base64')})+'\n');
  const type=async text=>{for(const char of text){send(char);await delay(25);}};
- const screen=()=>output.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g,'').replace(/\x1b\][^\x07]*(?:\x07|\x1b\\)/g,'');
+ const screen=()=>terminal.text();
  async function waitFor(text){for(let i=0;i<200;i++){if(screen().includes(text))return;await delay(100);}assert.fail('Native TUI did not display '+text+'; '+screen().slice(-2500)+' '+errors);}
  await waitFor('1.19.4');await delay(2000);send('\x1b\x10');await waitFor('broker URL');
  await type('not-a-url');send('\r');await delay(500);
